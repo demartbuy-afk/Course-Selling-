@@ -70,10 +70,10 @@ const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const normalId = params.get('c'); // ?c=courseId
       const shortCode = params.get('s'); // ?s=shortCode
-      const secretAccess = params.get('access'); // ?access=secure-admin-panel-99
+      const panelParam = params.get('panel'); // ?panel=admin
       
-      // 1. Check for Admin Secret Access
-      if (secretAccess === 'secure-admin-panel-99') {
+      // 1. Check for Admin Panel Access
+      if (panelParam === 'admin') {
         const savedAuth = localStorage.getItem('omnilearn_admin_auth');
         if (savedAuth === 'true') {
            setView({ type: 'SELLER_DASHBOARD' });
@@ -232,13 +232,20 @@ const App: React.FC = () => {
       case 'COURSE_DETAIL':
         // Try to find the requested course, otherwise fall back to the Hacking Bundle
         let course = courses.find(c => c.id === view.courseId);
+        
+        // Fallback Strategy if ID not found (e.g., seeding issues)
         if (!course) {
            course = courses.find(c => c.id === 'hacking-bundle-1');
         }
         
+        // Last resort: Find by Title if ID mismatch
+        if (!course) {
+           course = courses.find(c => c.title.toLowerCase().includes("hacking"));
+        }
+        
         if (!course) return (
              <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-                <p>Course not found.</p>
+                <p>Course not found. Please contact support.</p>
              </div>
         );
         return (

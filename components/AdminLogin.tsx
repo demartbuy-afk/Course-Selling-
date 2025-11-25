@@ -50,7 +50,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
            <div className="w-16 h-16 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-200 mb-4 transform rotate-3">
               <ShieldCheck className="text-white w-8 h-8" />
            </div>
-           <h1 className="text-2xl font-black text-gray-900">Admin Access</h1>
+           <h1 className="text-2xl font-black text-gray-900">Ethikkal Admin</h1>
            <p className="text-gray-500 text-sm mt-1">Enter your secure credentials to manage courses.</p>
         </div>
 
@@ -117,8 +117,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
              {isLoading ? 'Verifying...' : 'Login to Dashboard'} 
              {!isLoading && <ArrowRight size={18} className="ml-2" />}
            </Button>
-
-           {/* Removed the "Return to Home" button since this IS the home page now */}
         </form>
       </div>
     </div>
