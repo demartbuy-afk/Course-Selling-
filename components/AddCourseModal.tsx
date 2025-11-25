@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Upload, Plus, Youtube, Image as ImageIcon, Save, Trash2, FileText, HelpCircle, Layout, CheckCircle, Gift, Phone, Mail, Star, Bot, ChevronRight, DollarSign, Sparkles, List, GripVertical, Check, ArrowLeft, Eye, MonitorPlay, Settings, Shield, MessageSquare, IndianRupee, Tag, Link } from 'lucide-react';
+import { X, Plus, Youtube, Image as ImageIcon, Save, Trash2, Layout, Gift, Phone, Star, List, GripVertical, ArrowLeft, Eye, Settings, Shield, HelpCircle, IndianRupee, Tag, Percent } from 'lucide-react';
 import { Button } from './ui/Button';
 import { CATEGORIES } from '../constants';
 import { Course, Review, Coupon } from '../types';
@@ -12,7 +12,7 @@ interface AddCourseModalProps {
   initialData?: Course | null; // If present, we are editing
 }
 
-type Tab = 'overview' | 'content' | 'pricing' | 'social' | 'settings' | 'ai';
+type Tab = 'overview' | 'content' | 'pricing' | 'social' | 'settings';
 
 export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,6 +26,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
     title: '',
     category: 'Development',
     price: 0,
+    originalPrice: 0,
     rating: 4.8, 
     students: 1200, 
     level: 'Beginner',
@@ -49,7 +50,6 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
     supportEmail: '',
     supportPhone: '',
     reviews: [],
-    aiContext: '',
     coupons: []
   });
 
@@ -77,7 +77,6 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
     { id: 'content', label: 'Curriculum', icon: List },
     { id: 'pricing', label: 'Pricing & Coupons', icon: IndianRupee },
     { id: 'social', label: 'Reviews', icon: Star },
-    { id: 'ai', label: 'AI Tutor', icon: Bot },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
@@ -92,6 +91,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
         title: '',
         category: 'Development',
         price: 0,
+        originalPrice: 0,
         rating: 4.8, 
         students: 1250,
         level: 'Beginner',
@@ -118,7 +118,6 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
         supportEmail: '',
         supportPhone: '',
         reviews: [],
-        aiContext: '',
         coupons: []
       });
       setPreviewImage('');
@@ -257,6 +256,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
       title: formData.title || 'Untitled Course',
       instructor: initialData?.instructor || 'OmniLearn Academy',
       price: Number(formData.price) || 0,
+      originalPrice: Number(formData.originalPrice) || 0,
       rating: Number(formData.rating) || 4.5, 
       students: Number(formData.students) || 0,
       image: formData.image || 'https://picsum.photos/id/1/1200/600',
@@ -276,11 +276,20 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
       supportEmail: formData.supportEmail,
       supportPhone: formData.supportPhone,
       reviews: formData.reviews,
-      aiContext: formData.aiContext,
       coupons: formData.coupons
     };
     onSave(finalCourse);
     onClose();
+  };
+
+  // Helper to calculate discount percentage for display
+  const calculateDiscount = () => {
+    const original = Number(formData.originalPrice) || 0;
+    const selling = Number(formData.price) || 0;
+    if (original > selling && original > 0) {
+      return Math.round(((original - selling) / original) * 100);
+    }
+    return 0;
   };
 
   return (
@@ -445,7 +454,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                                <div className="mb-2 flex gap-2">
                                   <button onClick={() => setImageInputType('upload')} className={`text-xs px-2 py-1 rounded ${imageInputType === 'upload' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-gray-500'}`}>Upload</button>
                                   <button onClick={() => setImageInputType('url')} className={`text-xs px-2 py-1 rounded ${imageInputType === 'url' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-gray-500'}`}>Link</button>
-                               </div>
+                                </div>
 
                                {imageInputType === 'upload' ? (
                                   <div 
@@ -541,7 +550,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                                <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 shadow-sm">
                                   {idx + 1}
                                </div>
-                               <span className="flex-1 font-medium text-gray-800">{module}</span>
+                               <span className="flex-1 font-medium text-gray-800">{typeof module === 'string' ? module : (module as any).title}</span>
                                <button onClick={() => handleRemoveModule(idx)} className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
                                   <Trash2 size={18} />
                                </button>
@@ -608,6 +617,19 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                          <div>
+                            <label className="block text-sm font-bold text-gray-900 mb-2">Original Price (MRP)</label>
+                            <div className="relative">
+                               <span className="absolute left-4 top-3.5 text-gray-400 font-bold">₹</span>
+                               <input 
+                                 type="number" 
+                                 className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 outline-none text-lg font-bold text-gray-500 line-through decoration-gray-400"
+                                 value={formData.originalPrice}
+                                 onChange={(e) => setFormData({...formData, originalPrice: parseFloat(e.target.value)})}
+                                 placeholder="5000"
+                               />
+                            </div>
+                         </div>
+                         <div>
                             <label className="block text-sm font-bold text-gray-900 mb-2">Selling Price (₹)</label>
                             <div className="relative">
                                <span className="absolute left-4 top-3.5 text-gray-400 font-bold">₹</span>
@@ -616,24 +638,18 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                                  className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-4 focus:ring-green-500/10 outline-none text-xl font-bold text-gray-900"
                                  value={formData.price}
                                  onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value)})}
+                                 placeholder="599"
                                />
                             </div>
-                         </div>
-                         
-                         <div>
-                            <label className="block text-sm font-bold text-gray-900 mb-2">Fake Rating</label>
-                            <div className="flex items-center gap-2">
-                               <input 
-                                 type="number" step="0.1" max="5"
-                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 outline-none"
-                                 value={formData.rating}
-                                 onChange={(e) => setFormData({...formData, rating: parseFloat(e.target.value)})}
-                               />
-                               <Star className="text-yellow-400" fill="currentColor" />
-                            </div>
+                            {calculateDiscount() > 0 && (
+                                <div className="mt-2 flex items-center gap-2 text-green-600 font-bold text-sm animate-pulse">
+                                    <Percent size={14}/>
+                                    <span>{calculateDiscount()}% Discount applied automatically!</span>
+                                </div>
+                            )}
                          </div>
                       </div>
-                      
+
                       <div className="mt-6 pt-6 border-t border-gray-100">
                          <div className="grid grid-cols-2 gap-6">
                             <div>
@@ -646,12 +662,16 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                                />
                             </div>
                             <div>
-                               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Money Back Guarantee</label>
-                               <input 
-                                 className="w-full px-4 py-2 border rounded-lg"
-                                 value={formData.guarantee}
-                                 onChange={(e) => setFormData({...formData, guarantee: e.target.value})}
-                               />
+                               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Fake Rating</label>
+                               <div className="flex items-center gap-2">
+                                  <input 
+                                    type="number" step="0.1" max="5"
+                                    className="w-full px-4 py-2 border rounded-lg outline-none"
+                                    value={formData.rating}
+                                    onChange={(e) => setFormData({...formData, rating: parseFloat(e.target.value)})}
+                                  />
+                                  <Star className="text-yellow-400" fill="currentColor" size={16}/>
+                               </div>
                             </div>
                          </div>
                       </div>
@@ -737,7 +757,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                        <div className="space-y-3">
                           {formData.reviews?.map((r, i) => (
                              <div key={i} className="flex gap-4 p-4 border border-gray-100 rounded-xl hover:shadow-sm transition-shadow">
-                                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">{r.studentName.charAt(0)}</div>
+                                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-indigo-600">{(r.studentName || "S").charAt(0)}</div>
                                 <div className="flex-1">
                                    <div className="flex justify-between">
                                       <h4 className="font-bold">{r.studentName}</h4>
@@ -803,31 +823,6 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
                    </div>
                 </div>
               )}
-
-              {/* TAB: AI TUTOR */}
-              {activeTab === 'ai' && (
-                 <div className="animate-in slide-in-from-bottom-4">
-                    <div className="bg-slate-900 text-white rounded-2xl overflow-hidden shadow-xl min-h-[600px] flex flex-col">
-                       <div className="p-6 border-b border-slate-800">
-                          <h2 className="text-xl font-bold flex items-center gap-2"><Bot className="text-indigo-400"/> AI Tutor Configuration</h2>
-                          <p className="text-slate-400 text-sm mt-1">Train your course-specific chatbot.</p>
-                       </div>
-                       <div className="flex-1 p-6 flex flex-col">
-                          <textarea 
-                             className="flex-1 bg-slate-800/50 border border-slate-700 rounded-xl p-6 font-mono text-sm text-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed h-[500px]"
-                             placeholder="// Paste your course knowledge base here..."
-                             value={formData.aiContext || ''}
-                             onChange={(e) => setFormData({...formData, aiContext: e.target.value})}
-                          />
-                          <div className="mt-4 flex justify-between text-xs text-slate-500 font-mono">
-                             <span>{(formData.aiContext || '').length} characters</span>
-                             <span>Supports Markdown</span>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-              )}
-
            </div>
         </div>
       </div>

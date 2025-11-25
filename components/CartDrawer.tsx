@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { X, Trash2, ShoppingBag } from 'lucide-react';
 import { CartItem } from '../types';

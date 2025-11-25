@@ -37,25 +37,13 @@ const DEFAULT_COUPONS: Coupon[] = [
    { id: 'c2', code: 'FLAT500', type: 'flat', value: 500, isActive: true }
 ];
 
-const DEFAULT_AI_CONTEXT = `
-This is a comprehensive course.
-Key topics covered:
-1. Installation and Setup
-2. Basic Concepts and Syntax
-3. Advanced Architecture
-4. Real-world Deployment
-
-If the student asks about specific code errors, ask them to paste the code.
-If they ask about certification, tell them it's available after 100% completion.
-Support is available via email: support@omnilearn.com.
-`;
-
 export const MOCK_COURSES: Course[] = [
   {
     id: 'c1',
     title: 'Fullstack React & Node.js Masterclass',
     instructor: 'OmniLearn Academy',
     price: 5999,
+    originalPrice: 19999,
     rating: 4.9,
     students: 15420,
     image: 'https://picsum.photos/id/1/1200/600',
@@ -75,7 +63,6 @@ export const MOCK_COURSES: Course[] = [
     supportEmail: "support@reactmaster.com",
     supportPhone: "+91 98765 43210",
     reviews: DEFAULT_REVIEWS,
-    aiContext: DEFAULT_AI_CONTEXT + " Specifically for React, we cover Hooks, Context API, and Redux.",
     coupons: DEFAULT_COUPONS
   },
   {
@@ -83,6 +70,7 @@ export const MOCK_COURSES: Course[] = [
     title: 'UI/UX Design Principles for Developers',
     instructor: 'OmniLearn Academy',
     price: 3499,
+    originalPrice: 7999,
     rating: 4.7,
     students: 8200,
     image: 'https://picsum.photos/id/3/1200/600',
@@ -102,14 +90,14 @@ export const MOCK_COURSES: Course[] = [
     supportEmail: "design@omnilearn.com",
     reviews: [
       { id: 'r4', studentName: 'Sneha Gupta', timeAgo: '1 day ago', rating: 5, comment: 'Finally understood how to use Figma properly. Thanks!' }
-    ],
-    aiContext: "Focus on Figma tools. Mention we use the 2024 version of Figma."
+    ]
   },
   {
     id: 'c3',
     title: 'Python for Data Science and AI',
     instructor: 'OmniLearn Academy',
     price: 7499,
+    originalPrice: 14999,
     rating: 4.8,
     students: 22100,
     image: 'https://picsum.photos/id/4/1200/600',
@@ -127,14 +115,14 @@ export const MOCK_COURSES: Course[] = [
     bonuses: DEFAULT_BONUSES,
     bonusTotalValue: "₹15,000+",
     supportEmail: "ai-help@omnilearn.com",
-    reviews: DEFAULT_REVIEWS,
-    aiContext: "We use Python 3.10. Libraries: Pandas, Numpy, Matplotlib."
+    reviews: DEFAULT_REVIEWS
   },
   {
     id: 'c4',
     title: 'Digital Marketing Strategy 2024',
     instructor: 'OmniLearn Academy',
     price: 2999,
+    originalPrice: 5999,
     rating: 4.5,
     students: 5300,
     image: 'https://picsum.photos/id/6/1200/600',
@@ -156,6 +144,7 @@ export const MOCK_COURSES: Course[] = [
     title: 'Advanced Go Programming',
     instructor: 'OmniLearn Academy',
     price: 4999,
+    originalPrice: 9999,
     rating: 4.9,
     students: 3100,
     image: 'https://picsum.photos/id/60/1200/600',
@@ -177,6 +166,7 @@ export const MOCK_COURSES: Course[] = [
     title: 'Cinematic Video Editing',
     instructor: 'OmniLearn Academy',
     price: 3999,
+    originalPrice: 6999,
     rating: 4.8,
     students: 9000,
     image: 'https://picsum.photos/id/96/1200/600',

@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
-import { Star, ShieldCheck, Lock, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone, Bot, Share2, ChevronRight, MonitorPlay } from 'lucide-react';
+import { Star, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone } from 'lucide-react';
 import { Course } from '../types';
 import { Button } from './ui/Button';
 import { formatCurrency, getYouTubeEmbedUrl } from '../utils';
-import { CourseAssistant } from './CourseAssistant';
 
 interface CourseDetailProps {
   course: Course;
@@ -13,7 +12,6 @@ interface CourseDetailProps {
 
 export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) => {
   const [openPolicy, setOpenPolicy] = useState<string | null>(null);
-  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
 
   const togglePolicy = (policy: string) => {
     setOpenPolicy(openPolicy === policy ? null : policy);
@@ -23,6 +21,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
   const promoVideoUrl = (course.promoVideo && course.promoVideo.trim() !== "") 
     ? getYouTubeEmbedUrl(course.promoVideo) 
     : null;
+
+  // Calculate Discount
+  const originalPrice = course.originalPrice || (course.price * 5); // Fallback for legacy data
+  const discountPercentage = Math.round(((originalPrice - course.price) / originalPrice) * 100);
 
   return (
     <div className="bg-black min-h-screen font-sans text-gray-100 pb-24">
@@ -51,13 +53,17 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
                  {course.rating} <Star size={12} fill="currentColor"/>
               </span>
               <span>•</span>
-              <span>{course.students.toLocaleString()} enrolled</span>
+              <span>{(course.students || 0).toLocaleString()} enrolled</span>
            </div>
 
            <div className="flex items-end gap-3 mb-4">
               <span className="text-4xl font-black text-white">{formatCurrency(course.price)}</span>
-              <span className="text-lg text-gray-500 line-through decoration-gray-600 mb-1">{formatCurrency(course.price * 5)}</span>
-              <span className="text-xs font-bold text-green-500 mb-2 bg-green-500/10 px-2 py-0.5 rounded">80% OFF</span>
+              {discountPercentage > 0 && (
+                 <>
+                    <span className="text-lg text-gray-500 line-through decoration-gray-600 mb-1">{formatCurrency(originalPrice)}</span>
+                    <span className="text-xs font-bold text-green-500 mb-2 bg-green-500/10 px-2 py-0.5 rounded">{discountPercentage}% OFF</span>
+                 </>
+              )}
            </div>
            
            {/* Desktop Buy Button (Hidden on mobile, uses sticky bar) */}
@@ -92,14 +98,18 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
               Course Curriculum
            </h2>
            <div className="space-y-2">
-              {course.curriculum.map((item, idx) => (
-                 <div key={idx} className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center gap-3">
-                    <div className="bg-zinc-800 p-2 rounded-full text-indigo-400">
-                       <Play size={14} fill="currentColor" />
+              {course.curriculum && course.curriculum.length > 0 ? (
+                course.curriculum.map((item, idx) => (
+                    <div key={idx} className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center gap-3">
+                        <div className="bg-zinc-800 p-2 rounded-full text-indigo-400">
+                        <Play size={14} fill="currentColor" />
+                        </div>
+                        <span className="text-gray-200 font-medium text-sm">{typeof item === 'string' ? item : (item as any).title}</span>
                     </div>
-                    <span className="text-gray-200 font-medium text-sm">{item}</span>
-                 </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-500 italic text-sm">No curriculum modules added yet.</p>
+              )}
            </div>
         </div>
 
@@ -168,10 +178,10 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
                        <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
                              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-gray-400 text-xs">
-                                {review.studentName.charAt(0)}
+                                {(review.studentName || "S").charAt(0)}
                              </div>
                              <div>
-                                <p className="text-sm font-bold text-white">{review.studentName}</p>
+                                <p className="text-sm font-bold text-white">{review.studentName || "Student"}</p>
                                 <div className="flex text-yellow-500 text-[10px]">
                                    {'★'.repeat(Math.round(review.rating))}
                                 </div>
@@ -186,25 +196,6 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
                  <p className="text-gray-500 text-sm italic">No reviews yet.</p>
               )}
            </div>
-        </div>
-
-        {/* 9. AI TUTOR BUTTON */}
-        <div className="mb-12">
-           <button 
-             onClick={() => setIsAiAssistantOpen(true)}
-             className="w-full bg-gradient-to-r from-indigo-900 to-purple-900 border border-indigo-500/30 p-4 rounded-xl flex items-center justify-between group"
-           >
-              <div className="flex items-center gap-3">
-                 <div className="bg-white/10 p-2 rounded-lg">
-                    <Bot size={20} className="text-indigo-300" />
-                 </div>
-                 <div className="text-left">
-                    <p className="text-sm font-bold text-white">Have questions about this course?</p>
-                    <p className="text-xs text-indigo-300">Ask the AI Course Assistant</p>
-                 </div>
-              </div>
-              <ChevronRight size={20} className="text-indigo-400 group-hover:translate-x-1 transition-transform" />
-           </button>
         </div>
 
         {/* 10. POLICIES & SUPPORT (Footer) */}
@@ -253,7 +244,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
            
            <div className="mt-8 text-center">
               <p className="text-[10px] text-gray-600">
-                 © {new Date().getFullYear()} {course.instructor}. All rights reserved.
+                 © {new Date().getFullYear()} {course.instructor || 'OmniLearn'}. All rights reserved.
               </p>
            </div>
         </div>
@@ -263,20 +254,13 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
       {/* MOBILE STICKY BUY BAR */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#18181b] border-t border-white/10 p-3 md:hidden z-50 flex items-center justify-between pb-safe shadow-2xl">
          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-400 line-through">{formatCurrency(course.price * 5)}</span>
+            {discountPercentage > 0 && <span className="text-[10px] text-gray-400 line-through">{formatCurrency(originalPrice)}</span>}
             <span className="text-xl font-black text-white">{formatCurrency(course.price)}</span>
          </div>
          <Button className="bg-indigo-600 text-white font-bold px-8 h-12 rounded-lg shadow-lg shadow-indigo-900/50 animate-pulse" onClick={() => onBuyNow(course)}>
             Enroll Now
          </Button>
       </div>
-
-      {/* AI ASSISTANT MODAL */}
-      <CourseAssistant 
-         course={course}
-         isOpen={isAiAssistantOpen}
-         onClose={() => setIsAiAssistantOpen(false)}
-      />
     </div>
   );
 };

@@ -10,20 +10,32 @@ interface CourseCardProps {
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
+  // Calculate discount percentage if original price is present
+  const discountPercentage = course.originalPrice && course.originalPrice > course.price 
+    ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
+    : 0;
+
   return (
     <div 
       onClick={() => onClick(course.id)}
-      className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full"
+      className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full relative"
     >
+      {/* Discount Badge */}
+      {discountPercentage > 0 && (
+         <div className="absolute top-3 left-3 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md z-20">
+            {discountPercentage}% OFF
+         </div>
+      )}
+
       {/* Image */}
       <div className="relative aspect-video overflow-hidden bg-gray-100">
         <img 
-          src={course.image} 
+          src={course.image || 'https://via.placeholder.com/300'} 
           alt={course.title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded shadow-sm z-10">
-          {course.level}
+          {course.level || 'Beginner'}
         </div>
         
         {/* Video Indicator - Only show if video URL exists */}
@@ -43,11 +55,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
       <div className="p-5 flex flex-col flex-1">
         <div className="flex justify-between items-start mb-2">
           <span className="text-xs font-semibold text-indigo-600 uppercase tracking-wide">
-            {course.category}
+            {course.category || 'General'}
           </span>
           <div className="flex items-center gap-1 text-amber-400">
             <Star size={14} fill="currentColor" />
-            <span className="text-sm font-medium text-gray-700">{course.rating}</span>
+            <span className="text-sm font-medium text-gray-700">{course.rating || 0}</span>
           </div>
         </div>
 
@@ -62,22 +74,28 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
         <div className="flex items-center gap-4 text-xs text-gray-400 mb-4">
           <div className="flex items-center gap-1">
              <Users size={14} />
-             <span>{course.students.toLocaleString()}</span>
+             <span>{(course.students || 0).toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1">
              <BookOpen size={14} />
-             <span>{course.curriculum.length} Modules</span>
+             <span>{course.curriculum?.length || 0} Modules</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-auto">
            <div className="flex items-center gap-2">
              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                {course.instructor.charAt(0)}
+                {(course.instructor || "O").charAt(0)}
              </div>
-             <span className="text-sm text-gray-600 truncate max-w-[100px]">{course.instructor}</span>
+             <span className="text-sm text-gray-600 truncate max-w-[100px]">{course.instructor || 'OmniLearn'}</span>
            </div>
-           <span className="text-xl font-bold text-gray-900">{formatCurrency(course.price)}</span>
+           
+           <div className="flex flex-col items-end">
+             {course.originalPrice && course.originalPrice > course.price && (
+               <span className="text-xs text-gray-400 line-through decoration-gray-400">{formatCurrency(course.originalPrice)}</span>
+             )}
+             <span className="text-xl font-bold text-gray-900 leading-none">{formatCurrency(course.price || 0)}</span>
+           </div>
         </div>
       </div>
     </div>

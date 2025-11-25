@@ -31,6 +31,7 @@ export interface Course {
   title: string;
   instructor: string;
   price: number;
+  originalPrice?: number; // Added field for MRP
   rating: number;
   students: number;
   image: string;
@@ -59,8 +60,6 @@ export interface Course {
   supportPhone?: string;
   // Fake Stats
   reviews?: Review[];
-  // AI Bot Context
-  aiContext?: string; 
   // Course Specific Coupons
   coupons?: Coupon[];
 }
@@ -95,15 +94,8 @@ export interface Transaction {
 }
 
 export type ViewState = 
-  | { type: 'HOME' }
   | { type: 'CATALOG'; category?: string }
   | { type: 'COURSE_DETAIL'; courseId: string }
   | { type: 'CHECKOUT' }
+  | { type: 'ADMIN_LOGIN' }
   | { type: 'SELLER_DASHBOARD' };
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  text: string;
-  isThinking?: boolean;
-}

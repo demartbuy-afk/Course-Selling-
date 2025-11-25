@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Menu, X, Zap, LayoutDashboard } from 'lucide-react';
+import { ShoppingCart, Menu, X, Zap } from 'lucide-react';
 import { ViewState } from '../types';
-import { Button } from './ui/Button';
 
 interface HeaderProps {
   cartCount: number;
@@ -19,28 +18,29 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, onChangeV
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Navigation Links - Restored Instructor Panel
   const navLinks = [
-    { label: 'Home', action: () => onChangeView({ type: 'HOME' }) },
     { label: 'All Courses', action: () => onChangeView({ type: 'CATALOG' }) },
-    { label: 'Academy Info', action: () => {} }, 
+    { label: 'Instructor Panel', action: () => onChangeView({ type: 'ADMIN_LOGIN' }) },
+    { label: 'Support', action: () => {} }, 
   ];
 
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${
-        isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-3' : 'bg-transparent py-5'
+        isScrolled ? 'bg-white/90 backdrop-blur-md shadow-sm py-3' : 'bg-white py-4 border-b border-gray-100'
       }`}
     >
       <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
         {/* Logo */}
         <div 
           className="flex items-center gap-2 cursor-pointer" 
-          onClick={() => onChangeView({ type: 'HOME' })}
+          onClick={() => onChangeView({ type: 'CATALOG' })}
         >
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg shadow-indigo-200">
             <Zap size={20} fill="currentColor" />
           </div>
-          <span className={`text-xl font-extrabold tracking-tight ${isScrolled ? 'text-gray-900' : 'text-gray-900'}`}>
+          <span className="text-xl font-extrabold tracking-tight text-gray-900">
             OmniLearn
           </span>
         </div>
@@ -61,17 +61,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, onChangeV
 
         {/* Actions */}
         <div className="hidden md:flex items-center gap-4">
-          {/* Instructor Dashboard */}
-          <button
-             onClick={() => onChangeView({ type: 'SELLER_DASHBOARD' })}
-             className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-lg transition-colors"
-          >
-             <LayoutDashboard size={16} />
-             <span>Instructor Panel</span>
-          </button>
-
-          <div className="w-px h-6 bg-gray-300 mx-2"></div>
-
           <div className="relative group">
             <button 
               onClick={onOpenCart}
@@ -85,9 +74,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, onChangeV
               )}
             </button>
           </div>
-          <Button variant="primary" size="sm" onClick={() => onChangeView({ type: 'CATALOG' })}>
-            Get Started
-          </Button>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -115,14 +101,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, onChangeV
             </button>
           ))}
           
-          <button 
-             onClick={() => { onChangeView({ type: 'SELLER_DASHBOARD' }); setIsMobileMenuOpen(false); }}
-             className="flex items-center gap-2 text-left font-medium text-indigo-600 py-2"
-          >
-             <LayoutDashboard size={18} />
-             Instructor Panel
-          </button>
-
           <hr className="border-gray-100" />
           <div className="flex justify-between items-center">
             <button 
@@ -135,10 +113,6 @@ export const Header: React.FC<HeaderProps> = ({ cartCount, onOpenCart, onChangeV
               <ShoppingCart size={20} />
               <span>Cart ({cartCount})</span>
             </button>
-            <Button size="sm" onClick={() => {
-              onChangeView({ type: 'CATALOG' });
-              setIsMobileMenuOpen(false);
-            }}>Get Started</Button>
           </div>
         </div>
       )}

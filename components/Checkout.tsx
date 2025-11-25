@@ -116,7 +116,7 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
     setCouponCode('');
   };
 
-  const createTransactions = (status: 'success' | 'failed' | 'pending', txnId: string) => {
+  const createTransactions = (status: 'success' | 'failed' | 'pending', txnId: string): Transaction[] => {
     return items.map(item => ({
       id: `ORD-${Math.floor(100000 + Math.random() * 900000)}`,
       transactionId: txnId, 
@@ -130,7 +130,7 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
       customerEmail: formData.email,
       customerPhone: formData.phone,
       status: status,
-      approvalStatus: status === 'pending' ? 'pending' : (status === 'success' ? 'approved' : 'rejected')
+      approvalStatus: (status === 'pending' ? 'pending' : (status === 'success' ? 'approved' : 'rejected')) as 'pending' | 'approved' | 'rejected'
     }));
   };
 

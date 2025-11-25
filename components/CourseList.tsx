@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { Course, ViewState } from '../types';

@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { ArrowRight, Play, Sparkles, Terminal, Code2, Cpu, BarChart3, Globe } from 'lucide-react';
+import { ArrowRight, Play, Sparkles, Code2, BarChart3, Globe } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface HeroProps {
@@ -26,7 +27,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
           <div className="flex-1 text-center lg:text-left max-w-2xl mx-auto lg:mx-0">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] md:text-xs font-bold tracking-wide uppercase mb-6 md:mb-8 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4">
               <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-              <span>New: AI-Powered Curriculum</span>
+              <span>New: Project-Based Curriculum</span>
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight leading-[1.1] mb-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
@@ -38,7 +39,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
             
             <p className="text-base sm:text-lg lg:text-xl text-gray-400 mb-8 md:mb-10 leading-relaxed font-light animate-in fade-in slide-in-from-bottom-6 duration-700 px-4 lg:px-0">
               An elite learning ecosystem for developers, designers, and data scientists. 
-              Project-based learning with real-time AI mentorship.
+              Project-based learning with real-time mentorship.
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 animate-in fade-in slide-in-from-bottom-7 duration-700 w-full sm:w-auto">
@@ -123,7 +124,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore }) => {
                       &nbsp;&nbsp;<span className="text-white">{`}`}</span><br/>
                       <br/>
                       &nbsp;&nbsp;<span className="text-blue-400">master</span>(<span className="text-orange-300">topic</span>) <span className="text-white">{`{`}</span><br/>
-                      &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-gray-500">// Loading AI modules...</span><br/>
+                      &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-gray-500">// Loading modules...</span><br/>
                       &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-purple-400">return</span> <span className="text-green-300">"Expert"</span>;<br/>
                       &nbsp;&nbsp;<span className="text-white">{`}`}</span><br/>
                       <span className="text-white">{`}`}</span>
