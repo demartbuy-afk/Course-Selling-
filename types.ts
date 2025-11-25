@@ -94,7 +94,6 @@ export interface Transaction {
 }
 
 export type ViewState = 
-  | { type: 'CATALOG'; category?: string }
   | { type: 'COURSE_DETAIL'; courseId: string }
   | { type: 'CHECKOUT' }
   | { type: 'ADMIN_LOGIN' }

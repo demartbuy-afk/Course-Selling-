@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Star, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone } from 'lucide-react';
+import { Star, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone, PlayCircle, X } from 'lucide-react';
 import { Course } from '../types';
 import { Button } from './ui/Button';
 import { formatCurrency, getYouTubeEmbedUrl } from '../utils';
@@ -12,6 +12,7 @@ interface CourseDetailProps {
 
 export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) => {
   const [openPolicy, setOpenPolicy] = useState<string | null>(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   const togglePolicy = (policy: string) => {
     setOpenPolicy(openPolicy === policy ? null : policy);
@@ -37,6 +38,18 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
           className="w-full h-full object-cover opacity-90"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+        
+        {/* Play Button Overlay on Hero Image */}
+        {promoVideoUrl && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <button 
+              onClick={() => setIsVideoModalOpen(true)}
+              className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-300 group cursor-pointer border border-white/30"
+            >
+              <Play className="w-8 h-8 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="container mx-auto px-4 -mt-6 relative z-10">
@@ -46,7 +59,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
            <h1 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2 leading-tight drop-shadow-md">
              {course.title}
            </h1>
-           <div className="flex items-center gap-2 text-sm text-gray-400 mb-3">
+           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
               <span className="bg-zinc-800 px-2 py-0.5 rounded text-white">{course.category}</span>
               <span>•</span>
               <span className="flex items-center gap-1 text-yellow-500">
@@ -55,6 +68,16 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
               <span>•</span>
               <span>{(course.students || 0).toLocaleString()} enrolled</span>
            </div>
+
+           {/* Watch Preview Button (Near Title) */}
+           {promoVideoUrl && (
+             <button
+               onClick={() => setIsVideoModalOpen(true)}
+               className="flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors mb-6 border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 rounded-full w-fit hover:bg-indigo-500/20"
+             >
+               <PlayCircle size={18} /> Watch Preview
+             </button>
+           )}
 
            <div className="flex items-end gap-3 mb-4">
               <span className="text-4xl font-black text-white">{formatCurrency(course.price)}</span>
@@ -68,13 +91,15 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
            
            {/* Desktop Buy Button (Hidden on mobile, uses sticky bar) */}
            <div className="hidden md:block mb-6">
-              <Button size="lg" className="w-full md:w-auto px-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12" onClick={() => onBuyNow(course)}>
-                 Enroll Now
-              </Button>
+              <div className="flex gap-4">
+                <Button size="lg" className="w-full md:w-auto px-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12" onClick={() => onBuyNow(course)}>
+                  Enroll Now
+                </Button>
+              </div>
            </div>
         </div>
 
-        {/* 3. VIDEO PREVIEW SECTION (Only renders if promoVideoUrl is valid) */}
+        {/* 3. VIDEO PREVIEW SECTION (Inline - kept as secondary option) */}
         {promoVideoUrl && (
            <div className="mb-8 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
               <div className="p-3 border-b border-zinc-800 flex items-center gap-2">
@@ -261,6 +286,39 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
             Enroll Now
          </Button>
       </div>
+
+      {/* VIDEO PREVIEW MODAL */}
+      {isVideoModalOpen && promoVideoUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={() => setIsVideoModalOpen(false)}>
+          <div className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+             {/* Close Button */}
+             <button 
+               onClick={() => setIsVideoModalOpen(false)} 
+               className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-white/20 rounded-full p-2 transition-colors"
+             >
+               <X size={24} />
+             </button>
+             
+             {/* Video Frame */}
+             <div className="aspect-video w-full bg-black">
+               <iframe 
+                 src={promoVideoUrl + "&autoplay=1"} 
+                 className="w-full h-full" 
+                 title="Course Preview" 
+                 allow="autoplay; encrypted-media; gyroscope; picture-in-picture" 
+                 allowFullScreen
+               ></iframe>
+             </div>
+             
+             <div className="p-4 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
+                <span className="text-sm font-bold text-gray-300">Preview: {course.title}</span>
+                <Button size="sm" onClick={() => { setIsVideoModalOpen(false); onBuyNow(course); }}>
+                   Get Full Access
+                </Button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

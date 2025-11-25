@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Course, Transaction, MerchantSettings } from '../types';
 import { formatCurrency } from '../utils';
 import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus } from '../services/firebase';
-import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2 } from 'lucide-react';
+import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2, Globe } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface SellerDashboardProps {
@@ -14,9 +14,10 @@ interface SellerDashboardProps {
   onDeleteCourse: (id: string) => void;
   onLogout: () => void; 
   onShareCourse: (id: string, title: string) => void;
+  onPreviewWebsite: () => void;
 }
 
-export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, transactions, onAddCourse, onEditCourse, onDeleteCourse, onLogout, onShareCourse }) => {
+export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, transactions, onAddCourse, onEditCourse, onDeleteCourse, onLogout, onShareCourse, onPreviewWebsite }) => {
   const [activeTab, setActiveTab] = useState<'courses' | 'approvals' | 'transactions' | 'settings'>('courses');
   const [selectedCourseOrders, setSelectedCourseOrders] = useState<string | null>(null);
   
@@ -76,7 +77,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
                <p className="text-gray-500">Monitor performance, manage courses, and track orders.</p>
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
+              <Button variant="secondary" onClick={onPreviewWebsite} className="border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100">
+                 <Globe size={18} className="mr-2" /> Website Preview
+              </Button>
               <Button onClick={onAddCourse} className="flex-1 md:flex-none">
                  <PlusCircle size={18} className="mr-2" />
                  Add New Course

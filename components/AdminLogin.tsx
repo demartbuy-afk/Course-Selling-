@@ -5,10 +5,10 @@ import { Button } from './ui/Button';
 
 interface AdminLoginProps {
   onLogin: () => void;
-  onCancel: () => void;
+  onCancel?: () => void; // Made optional
 }
 
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onCancel }) => {
+export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -118,15 +118,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onCancel }) => 
              {!isLoading && <ArrowRight size={18} className="ml-2" />}
            </Button>
 
-           <div className="text-center mt-4">
-              <button 
-                type="button" 
-                onClick={onCancel}
-                className="text-sm text-gray-500 hover:text-gray-900 font-medium"
-              >
-                 Return to Home
-              </button>
-           </div>
+           {/* Removed the "Return to Home" button since this IS the home page now */}
         </form>
       </div>
     </div>
