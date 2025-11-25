@@ -254,7 +254,7 @@ export const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose,
     const finalCourse: Course = {
       id: initialData?.id || `new-${Date.now()}`,
       title: formData.title || 'Untitled Course',
-      instructor: initialData?.instructor || 'OmniLearn Academy',
+      instructor: initialData?.instructor || 'Instructor',
       price: Number(formData.price) || 0,
       originalPrice: Number(formData.originalPrice) || 0,
       rating: Number(formData.rating) || 4.5, 

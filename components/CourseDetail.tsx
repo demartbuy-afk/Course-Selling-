@@ -99,24 +99,6 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
            </div>
         </div>
 
-        {/* 3. VIDEO PREVIEW SECTION (Inline - kept as secondary option) */}
-        {promoVideoUrl && (
-           <div className="mb-8 bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
-              <div className="p-3 border-b border-zinc-800 flex items-center gap-2">
-                 <Play className="text-red-500" size={18} />
-                 <span className="font-bold text-sm text-gray-300">Course Preview</span>
-              </div>
-              <div className="aspect-video">
-                 <iframe 
-                   className="w-full h-full" 
-                   src={promoVideoUrl} 
-                   title="Preview" 
-                   allowFullScreen
-                 ></iframe>
-              </div>
-           </div>
-        )}
-
         {/* 4. COURSE CURRICULUM */}
         <div className="mb-8">
            <h2 className="text-xl font-bold text-indigo-400 mb-4 border-l-4 border-indigo-500 pl-3">
@@ -269,7 +251,7 @@ export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) 
            
            <div className="mt-8 text-center">
               <p className="text-[10px] text-gray-600">
-                 © {new Date().getFullYear()} {course.instructor || 'OmniLearn'}. All rights reserved.
+                 © {new Date().getFullYear()}. All rights reserved.
               </p>
            </div>
         </div>

@@ -48,12 +48,14 @@ export const saveCourseToDb = async (course: Course) => {
   try {
     const sanitizedCourse = JSON.parse(JSON.stringify(course));
 
-    if (!sanitizedCourse.id || sanitizedCourse.id.startsWith('new-') || sanitizedCourse.id.startsWith('c')) {
+    // If it's a new course with a temporary ID, use push to generate a new ID
+    if (!sanitizedCourse.id || sanitizedCourse.id.startsWith('new-')) {
       const newCourseRef = push(ref(db, 'courses'));
       const { id, ...courseData } = sanitizedCourse; 
       await set(newCourseRef, courseData);
       return newCourseRef.key;
     } else {
+      // If it has a specific ID (like 'hacking-bundle-1'), use that ID
       const courseRef = ref(db, `courses/${sanitizedCourse.id}`);
       const { id, ...courseData } = sanitizedCourse;
       await set(courseRef, courseData);
@@ -224,19 +226,49 @@ export const validateCouponCode = async (code: string): Promise<Coupon | null> =
 export const seedInitialCourses = async (mockCourses: Course[]) => {
   try {
     const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, `courses`));
-    if (!snapshot.exists()) {
-      console.log("Seeding Database...");
-      mockCourses.forEach(async (c) => {
-        const { id, ...data } = c;
-        const cleanData = JSON.parse(JSON.stringify(data));
-        await push(ref(db, 'courses'), cleanData);
-      });
-      return true;
+    const updates: any = {};
+    let needsUpdate = false;
+
+    // Check specifically for the Hacking Course (the default home page)
+    const hackingCourse = mockCourses.find(c => c.id === 'hacking-bundle-1');
+    if (hackingCourse) {
+        const snapshot = await get(child(dbRef, `courses/hacking-bundle-1`));
+        if (!snapshot.exists()) {
+             console.log("Seeding Hacking Course...");
+             const { id, ...data } = hackingCourse;
+             // Ensure data is plain object
+             const cleanData = JSON.parse(JSON.stringify(data));
+             updates[`courses/${id}`] = cleanData;
+             needsUpdate = true;
+        }
     }
+
+    // Also check if DB is completely empty and seed everything if so
+    const rootSnapshot = await get(child(dbRef, `courses`));
+    if (!rootSnapshot.exists()) {
+         console.log("Seeding Full Database...");
+         mockCourses.forEach(c => {
+             const { id, ...data } = c;
+             const cleanData = JSON.parse(JSON.stringify(data));
+             // If ID is simple (not random-looking), use it as key, else let Firebase push (or generate one)
+             if (id && !id.startsWith('new-')) {
+                 updates[`courses/${id}`] = cleanData;
+             } else {
+                 const newKey = push(child(dbRef, 'courses')).key;
+                 if (newKey) updates[`courses/${newKey}`] = cleanData;
+             }
+         });
+         needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+        await update(ref(db), updates);
+        return true;
+    }
+    
     return false;
   } catch (e) {
-    console.error(e);
+    console.error("Seeding Error:", e);
     return false;
   }
 };

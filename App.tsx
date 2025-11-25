@@ -70,17 +70,27 @@ const App: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const normalId = params.get('c'); // ?c=courseId
       const shortCode = params.get('s'); // ?s=shortCode
+      const secretAccess = params.get('access'); // ?access=secure-admin-panel-99
       
-      // LOGIC CHANGE: Default is Admin Login unless a specific course link is used
-      
+      // 1. Check for Admin Secret Access
+      if (secretAccess === 'secure-admin-panel-99') {
+        const savedAuth = localStorage.getItem('omnilearn_admin_auth');
+        if (savedAuth === 'true') {
+           setView({ type: 'SELLER_DASHBOARD' });
+        } else {
+           setView({ type: 'ADMIN_LOGIN' });
+        }
+        return;
+      }
+
+      // 2. Check for Direct Course Link
       if (normalId) {
         const found = fetchedCourses.find(c => c.id === normalId);
         if (found) {
           setView({ type: 'COURSE_DETAIL', courseId: normalId });
         } else {
-           // Invalid ID, still go to Admin Login but maybe alert? 
-           // For now, default to Admin Login if ID invalid
-           setView({ type: 'ADMIN_LOGIN' });
+           // Invalid ID, Default to Hacking Course
+           setView({ type: 'COURSE_DETAIL', courseId: 'hacking-bundle-1' });
         }
       } 
       else if (shortCode) {
@@ -90,20 +100,15 @@ const App: React.FC = () => {
            if (found) {
              setView({ type: 'COURSE_DETAIL', courseId: resolvedId });
            } else {
-             setView({ type: 'ADMIN_LOGIN' });
+             setView({ type: 'COURSE_DETAIL', courseId: 'hacking-bundle-1' });
            }
         } else {
-           setView({ type: 'ADMIN_LOGIN' });
+           setView({ type: 'COURSE_DETAIL', courseId: 'hacking-bundle-1' });
         }
       } else {
-         // NO PARAMS provided: DEFAULT TO ADMIN LOGIN (HOME PAGE)
-         // If already logged in, go to Dashboard, else Login
-         const savedAuth = localStorage.getItem('omnilearn_admin_auth');
-         if (savedAuth === 'true') {
-            setView({ type: 'SELLER_DASHBOARD' });
-         } else {
-            setView({ type: 'ADMIN_LOGIN' });
-         }
+         // 3. DEFAULT HOME PAGE: Show the specific Hacking Course
+         // ID: 'hacking-bundle-1'
+         setView({ type: 'COURSE_DETAIL', courseId: 'hacking-bundle-1' });
       }
     };
 
@@ -195,13 +200,14 @@ const App: React.FC = () => {
   const handleAdminLogout = () => {
     setIsAdminLoggedIn(false);
     localStorage.removeItem('omnilearn_admin_auth');
-    setView({ type: 'ADMIN_LOGIN' });
+    setView({ type: 'ADMIN_LOGIN' }); // Will show login screen
   };
 
   const handleWebsitePreview = () => {
     if (courses.length > 0) {
-      // Open the first course as preview
-      setView({ type: 'COURSE_DETAIL', courseId: courses[0].id });
+      // Open the Hacking course or first available
+      const hackingCourse = courses.find(c => c.id === 'hacking-bundle-1');
+      setView({ type: 'COURSE_DETAIL', courseId: hackingCourse ? hackingCourse.id : courses[0].id });
     } else {
       alert("No courses available to preview. Please create a course first.");
     }
@@ -224,26 +230,20 @@ const App: React.FC = () => {
 
     switch (view.type) {
       case 'COURSE_DETAIL':
-        const course = courses.find(c => c.id === view.courseId);
+        // Try to find the requested course, otherwise fall back to the Hacking Bundle
+        let course = courses.find(c => c.id === view.courseId);
+        if (!course) {
+           course = courses.find(c => c.id === 'hacking-bundle-1');
+        }
+        
         if (!course) return (
              <div className="min-h-screen flex items-center justify-center flex-col gap-4">
                 <p>Course not found.</p>
-                <button onClick={() => setView({type: 'ADMIN_LOGIN'})} className="text-indigo-600 underline">Go to Admin Login</button>
              </div>
         );
         return (
           <div className="bg-black min-h-screen relative">
-             {/* Optional: Add a back to admin button if user is admin */}
-             {isAdminLoggedIn && (
-               <div className="fixed top-4 left-4 z-50">
-                 <button 
-                   onClick={() => setView({ type: 'SELLER_DASHBOARD' })}
-                   className="bg-white/10 backdrop-blur text-white px-4 py-2 rounded-full text-xs font-bold hover:bg-white/20 border border-white/20"
-                 >
-                   ← Back to Dashboard
-                 </button>
-               </div>
-             )}
+             {/* No Header here as requested previously */}
              <CourseDetail 
                 course={course} 
                 onBuyNow={handleBuyNow}
@@ -258,11 +258,11 @@ const App: React.FC = () => {
               items={cartItems} 
               onComplete={handleTransactionComplete}
               onCancel={() => {
-                // Return to course detail if possible
+                // Return to course detail
                 if (cartItems.length > 0) {
                   setView({ type: 'COURSE_DETAIL', courseId: cartItems[0].id });
                 } else {
-                  setView({ type: 'ADMIN_LOGIN' }); // Fallback
+                  setView({ type: 'COURSE_DETAIL', courseId: 'hacking-bundle-1' });
                 }
               }}
             />
@@ -294,7 +294,8 @@ const App: React.FC = () => {
         );
         
       default:
-        return <AdminLogin onLogin={handleAdminLogin} />;
+        // Fallback default
+        return null;
     }
   };
 
