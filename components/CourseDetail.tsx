@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Star, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone, PlayCircle, X } from 'lucide-react';
+import { Star, Play, Award, CheckSquare, Mail, Plus, Minus, CheckCircle2, Phone } from 'lucide-react';
 import { Course } from '../types';
 import { Button } from './ui/Button';
 import { formatCurrency, getYouTubeEmbedUrl } from '../utils';
@@ -12,295 +11,495 @@ interface CourseDetailProps {
 
 export const CourseDetail: React.FC<CourseDetailProps> = ({ course, onBuyNow }) => {
   const [openPolicy, setOpenPolicy] = useState<string | null>(null);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
 
   const togglePolicy = (policy: string) => {
     setOpenPolicy(openPolicy === policy ? null : policy);
   };
 
-  // Strict check: Only get URL if promoVideo exists and is not just whitespace
-  const promoVideoUrl = (course.promoVideo && course.promoVideo.trim() !== "") 
-    ? getYouTubeEmbedUrl(course.promoVideo) 
+  const toggleFaq = (index: number) => {
+    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  };
+
+  const promoVideoUrl = (course.promoVideo && course.promoVideo.trim() !== "")
+    ? getYouTubeEmbedUrl(course.promoVideo)
     : null;
 
-  // Calculate Discount
-  const originalPrice = course.originalPrice || (course.price * 5); // Fallback for legacy data
-  const discountPercentage = Math.round(((originalPrice - course.price) / originalPrice) * 100);
+  const originalPrice = course.originalPrice || (course.price * 5);
+  const discountPercentage = Math.round(
+    ((originalPrice - course.price) / originalPrice) * 100
+  );
 
   return (
     <div className="bg-black min-h-screen font-sans text-gray-100 pb-24">
-      
-      {/* 1. HERO IMAGE (Always Top) */}
-      <div className="w-full aspect-square md:aspect-video bg-zinc-900 relative">
-        <img 
-          src={course.image} 
-          alt={course.title} 
-          className="w-full h-full object-cover opacity-90"
+
+      {/* 1. HERO IMAGE */}
+      <div className="w-full aspect-square md:aspect-video bg-zinc-900 relative overflow-hidden">
+        <img
+          src={course.image}
+          alt={course.title}
+          className="w-full h-full object-cover opacity-90 animate-fade-in-up"
+          style={{ animationDuration: '0.8s' }}
         />
+
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-        
-        {/* Play Button Overlay on Hero Image */}
-        {promoVideoUrl && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <button 
-              onClick={() => setIsVideoModalOpen(true)}
-              className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-300 group cursor-pointer border border-white/30"
-            >
-              <Play className="w-8 h-8 text-white fill-white ml-1 group-hover:scale-110 transition-transform" />
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="container mx-auto px-4 -mt-6 relative z-10">
-        
+
         {/* 2. TITLE & PRICE */}
-        <div className="mb-6">
-           <h1 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2 leading-tight drop-shadow-md">
-             {course.title}
-           </h1>
-           <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
-              <span className="bg-zinc-800 px-2 py-0.5 rounded text-white">{course.category}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1 text-yellow-500">
-                 {course.rating} <Star size={12} fill="currentColor"/>
-              </span>
-              <span>•</span>
-              <span>{(course.students || 0).toLocaleString()} enrolled</span>
-           </div>
+        <div
+          className="mb-6 animate-fade-in-up"
+          style={{ animationDelay: '0.05s' }}
+        >
+          <h1 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2 leading-tight drop-shadow-md">
+            {course.title}
+          </h1>
 
-           {/* Watch Preview Button (Near Title) */}
-           {promoVideoUrl && (
-             <button
-               onClick={() => setIsVideoModalOpen(true)}
-               className="flex items-center gap-2 text-sm font-bold text-indigo-400 hover:text-indigo-300 transition-colors mb-6 border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 rounded-full w-fit hover:bg-indigo-500/20"
-             >
-               <PlayCircle size={18} /> Watch Preview
-             </button>
-           )}
+          <div className="flex items-center gap-2 text-sm text-gray-400 mb-4">
+            <span className="bg-zinc-800 px-2 py-0.5 rounded text-white">
+              {course.category}
+            </span>
 
-           <div className="flex items-end gap-3 mb-4">
-              <span className="text-4xl font-black text-white">{formatCurrency(course.price)}</span>
-              {discountPercentage > 0 && (
-                 <>
-                    <span className="text-lg text-gray-500 line-through decoration-gray-600 mb-1">{formatCurrency(originalPrice)}</span>
-                    <span className="text-xs font-bold text-green-500 mb-2 bg-green-500/10 px-2 py-0.5 rounded">{discountPercentage}% OFF</span>
-                 </>
-              )}
-           </div>
-           
-           {/* Desktop Buy Button (Hidden on mobile, uses sticky bar) */}
-           <div className="hidden md:block mb-6">
-              <div className="flex gap-4">
-                <Button size="lg" className="w-full md:w-auto px-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12" onClick={() => onBuyNow(course)}>
-                  Enroll Now
-                </Button>
+            <span>•</span>
+
+            <span className="flex items-center gap-1 text-yellow-500">
+              {course.rating}
+              <Star size={12} fill="currentColor" />
+            </span>
+
+            <span>•</span>
+
+            <span>
+              {(course.students || 0).toLocaleString()} enrolled
+            </span>
+          </div>
+
+          <div className="flex items-end gap-3 mb-4">
+            <span className="text-4xl font-black text-white animate-price-glow">
+              {formatCurrency(course.price)}
+            </span>
+
+            {discountPercentage > 0 && (
+              <>
+                <span className="text-lg text-gray-500 line-through decoration-gray-600 mb-1">
+                  {formatCurrency(originalPrice)}
+                </span>
+
+                <span className="text-xs font-bold text-green-500 mb-2 bg-green-500/10 px-2 py-0.5 rounded">
+                  {discountPercentage}% OFF
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Desktop Buy Button */}
+          <div className="hidden md:block mb-6">
+            <div className="flex gap-4">
+              <Button
+                size="lg"
+                className="w-full md:w-auto px-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-12 transition-transform duration-200 hover:scale-[1.03] active:scale-95"
+                onClick={() => onBuyNow(course)}
+              >
+                Enroll Now
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. PROMO VIDEO */}
+        {promoVideoUrl && (
+          <div
+            className="mb-8 animate-fade-in-up"
+            style={{ animationDelay: '0.08s' }}
+          >
+            <h2 className="text-xl font-bold text-indigo-400 mb-4 border-l-4 border-indigo-500 pl-3">
+              Course Preview
+            </h2>
+
+            <div
+              className={`bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-lg ${
+                course.videoAspectRatio === '9:16'
+                  ? 'max-w-xs mx-auto'
+                  : ''
+              }`}
+            >
+              <div
+                className={
+                  course.videoAspectRatio === '9:16'
+                    ? 'aspect-[9/16] w-full bg-black'
+                    : 'aspect-video w-full bg-black'
+                }
+              >
+                <iframe
+                  src={promoVideoUrl}
+                  className="w-full h-full"
+                  title={`${course.title} - Preview`}
+                  allow="autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
               </div>
-           </div>
-        </div>
-
-        {/* 4. COURSE CURRICULUM */}
-        <div className="mb-8">
-           <h2 className="text-xl font-bold text-indigo-400 mb-4 border-l-4 border-indigo-500 pl-3">
-              Course Curriculum
-           </h2>
-           <div className="space-y-2">
-              {course.curriculum && course.curriculum.length > 0 ? (
-                course.curriculum.map((item, idx) => (
-                    <div key={idx} className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center gap-3">
-                        <div className="bg-zinc-800 p-2 rounded-full text-indigo-400">
-                        <Play size={14} fill="currentColor" />
-                        </div>
-                        <span className="text-gray-200 font-medium text-sm">{typeof item === 'string' ? item : (item as any).title}</span>
-                    </div>
-                ))
-              ) : (
-                <p className="text-gray-500 italic text-sm">No curriculum modules added yet.</p>
-              )}
-           </div>
-        </div>
-
-        {/* 5. BONUSES (Gold Section) */}
-        {course.bonuses && course.bonuses.length > 0 && (
-           <div className="mb-8 bg-gradient-to-b from-yellow-900/20 to-black border-2 border-yellow-600/50 rounded-xl p-6 relative overflow-hidden">
-               <div className="absolute top-0 right-0 bg-yellow-600 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
-                  LIMITED TIME OFFER
-               </div>
-               
-               <h2 className="text-xl font-bold text-yellow-400 mb-1 flex items-center gap-2">
-                  <Award className="text-yellow-500"/> {course.bonuses.length} FREE BONUSES
-               </h2>
-               <p className="text-yellow-200/60 text-xs mb-6 uppercase tracking-wider">
-                  Total Value: {course.bonusTotalValue}
-               </p>
-
-               <div className="space-y-4">
-                  {course.bonuses.map((bonus, idx) => (
-                     <div key={idx} className="flex items-start gap-3">
-                        <CheckSquare className="text-green-500 shrink-0 mt-1" size={18} />
-                        <div>
-                           <h3 className="font-bold text-white text-base">{bonus.title}</h3>
-                           <p className="text-xs text-gray-400">{bonus.description}</p>
-                        </div>
-                     </div>
-                  ))}
-               </div>
-               
-               <div className="mt-6 pt-4 border-t border-yellow-600/30">
-                   <p className="text-center text-sm font-bold text-yellow-200">
-                      Get all of this for FREE when you enroll today!
-                   </p>
-               </div>
-           </div>
+            </div>
+          </div>
         )}
 
-        {/* 6. WHAT YOU GET (Features - Small Text) */}
-        <div className="mb-8">
-           <h2 className="text-lg font-bold text-gray-300 mb-3">What You Get Inside:</h2>
-           <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-              {(course.features || ["Lifetime Access"]).map((feature, i) => (
-                 <div key={i} className="flex items-center gap-2">
-                    <CheckCircle2 size={12} className="text-gray-500" />
-                    <span className="text-xs text-gray-400">{feature}</span>
-                 </div>
+        {/* 4. COURSE CURRICULUM */}
+        <div
+          className="mb-8 animate-fade-in-up"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <h2 className="text-xl font-bold text-indigo-400 mb-4 border-l-4 border-indigo-500 pl-3">
+            Course Curriculum
+          </h2>
+
+          <div className="space-y-2">
+            {course.curriculum && course.curriculum.length > 0 ? (
+              course.curriculum.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex items-center gap-3 animate-fade-in-up transition-all duration-200 hover:translate-x-1 hover:border-indigo-500/50 hover:bg-zinc-800/60"
+                  style={{
+                    animationDelay: `${0.15 + idx * 0.05}s`
+                  }}
+                >
+                  <div className="bg-zinc-800 p-2 rounded-full text-indigo-400">
+                    <Play size={14} fill="currentColor" />
+                  </div>
+
+                  <span className="text-gray-200 font-medium text-sm">
+                    {typeof item === 'string'
+                      ? item
+                      : (item as any).title}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 italic text-sm">
+                No curriculum modules added yet.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* 5. BONUSES */}
+        {course.bonuses && course.bonuses.length > 0 && (
+          <div
+            className="mb-8 bg-gradient-to-b from-yellow-900/20 to-black border-2 border-yellow-600/50 rounded-xl p-6 relative overflow-hidden animate-fade-in-up"
+            style={{ animationDelay: '0.15s' }}
+          >
+            <div className="absolute top-0 right-0 bg-yellow-600 text-black text-xs font-bold px-3 py-1 rounded-bl-lg">
+              LIMITED TIME OFFER
+            </div>
+
+            <h2 className="text-xl font-bold text-yellow-400 mb-1 flex items-center gap-2">
+              <Award className="text-yellow-500" />
+              {course.bonuses.length} FREE BONUSES
+            </h2>
+
+            <p className="text-yellow-200/60 text-xs mb-6 uppercase tracking-wider">
+              Total Value: {course.bonusTotalValue}
+            </p>
+
+            <div className="space-y-4">
+              {course.bonuses.map((bonus, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 animate-fade-in-up transition-transform duration-200 hover:translate-x-1"
+                  style={{
+                    animationDelay: `${0.2 + idx * 0.06}s`
+                  }}
+                >
+                  <CheckSquare
+                    className="text-green-500 shrink-0 mt-1"
+                    size={18}
+                  />
+
+                  <div>
+                    <h3 className="font-bold text-white text-base">
+                      {bonus.title}
+                    </h3>
+
+                    <p className="text-xs text-gray-400">
+                      {bonus.description}
+                    </p>
+                  </div>
+                </div>
               ))}
-           </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-yellow-600/30">
+              <p className="text-center text-sm font-bold text-yellow-200">
+                Get all of this for FREE when you enroll today!
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* 6. WHAT YOU GET */}
+        <div
+          className="mb-8 animate-fade-in-up"
+          style={{ animationDelay: '0.2s' }}
+        >
+          <h2 className="text-lg font-bold text-gray-300 mb-3">
+            What You Get Inside:
+          </h2>
+
+          <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+            {(course.features || ["Lifetime Access"]).map(
+              (feature, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2"
+                >
+                  <CheckCircle2
+                    size={12}
+                    className="text-gray-500"
+                  />
+
+                  <span className="text-xs text-gray-400">
+                    {feature}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
         </div>
 
         {/* 7. DESCRIPTION */}
-        <div className="mb-8">
-           <h2 className="text-xl font-bold text-white mb-3">About This Course</h2>
-           <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">
-              {course.description}
-           </p>
+        <div
+          className="mb-8 animate-fade-in-up"
+          style={{ animationDelay: '0.25s' }}
+        >
+          <h2 className="text-xl font-bold text-white mb-3">
+            About This Course
+          </h2>
+
+          <p className="text-gray-400 text-sm leading-relaxed whitespace-pre-wrap">
+            {course.description}
+          </p>
         </div>
 
-        {/* 8. REVIEWS (Dynamic) */}
-        <div className="mb-8">
-           <h2 className="text-xl font-bold text-white mb-4">Student Reviews</h2>
-           <div className="space-y-4">
-              {course.reviews && course.reviews.length > 0 ? (
-                 course.reviews.map((review, i) => (
-                    <div key={i} className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                       <div className="flex justify-between items-start mb-2">
-                          <div className="flex items-center gap-2">
-                             <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-gray-400 text-xs">
-                                {(review.studentName || "S").charAt(0)}
-                             </div>
-                             <div>
-                                <p className="text-sm font-bold text-white">{review.studentName || "Student"}</p>
-                                <div className="flex text-yellow-500 text-[10px]">
-                                   {'★'.repeat(Math.round(review.rating))}
-                                </div>
-                             </div>
-                          </div>
-                          <span className="text-[10px] text-gray-600">{review.timeAgo}</span>
-                       </div>
-                       <p className="text-xs text-gray-400 leading-relaxed">"{review.comment}"</p>
-                    </div>
-                 ))
-              ) : (
-                 <p className="text-gray-500 text-sm italic">No reviews yet.</p>
-              )}
-           </div>
-        </div>
+        {/* 8. REVIEWS */}
+        <div
+          className="mb-8 animate-fade-in-up"
+          style={{ animationDelay: '0.3s' }}
+        >
+          <h2 className="text-xl font-bold text-white mb-4">
+            Student Reviews
+          </h2>
 
-        {/* 10. POLICIES & SUPPORT (Footer) */}
-        <div className="border-t border-zinc-800 pt-8 pb-8">
-           <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Support & Legal</h3>
-           
-           {/* Contact */}
-           <div className="mb-6 space-y-2">
-              {course.supportEmail && (
-                 <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <Mail size={16} className="text-indigo-500"/> {course.supportEmail}
-                 </div>
-              )}
-              {course.supportPhone && (
-                 <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <Phone size={16} className="text-indigo-500"/> {course.supportPhone}
-                 </div>
-              )}
-           </div>
+          <div className="space-y-4">
+            {course.reviews && course.reviews.length > 0 ? (
+              course.reviews.map((review, i) => (
+                <div
+                  key={i}
+                  className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 transition-all duration-200 hover:border-indigo-500/40 hover:-translate-y-0.5"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-gray-400 text-xs">
+                        {(review.studentName || "S").charAt(0)}
+                      </div>
 
-           {/* Expandable Policies */}
-           <div className="space-y-1">
-              {['Refund Policy', 'Terms and Conditions', 'Privacy Policy'].map((policyTitle) => {
-                 const key = policyTitle.split(' ')[0].toLowerCase();
-                 const policyKey = key as keyof NonNullable<Course['policies']>;
-                 const isOpen = openPolicy === key;
-                 
-                 return (
-                    <div key={key} className="bg-zinc-900 rounded-lg overflow-hidden">
-                       <button 
-                         onClick={() => togglePolicy(key)}
-                         className="w-full flex justify-between items-center p-3 text-xs font-bold text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                       >
-                          {policyTitle}
-                          {isOpen ? <Minus size={14}/> : <Plus size={14}/>}
-                       </button>
-                       {isOpen && (
-                          <div className="p-3 pt-0 text-[10px] text-gray-500 leading-relaxed border-t border-zinc-800/50">
-                             {course.policies?.[policyKey] || "No specific policy text provided."}
-                          </div>
-                       )}
+                      <div>
+                        <p className="text-sm font-bold text-white">
+                          {review.studentName || "Student"}
+                        </p>
+
+                        <div className="flex text-yellow-500 text-[10px]">
+                          {'★'.repeat(
+                            Math.round(review.rating)
+                          )}
+                        </div>
+                      </div>
                     </div>
-                 );
-              })}
-           </div>
-           
-           <div className="mt-8 text-center">
-              <p className="text-[10px] text-gray-600">
-                 © {new Date().getFullYear()}. All rights reserved.
+
+                    <span className="text-[10px] text-gray-600">
+                      {review.timeAgo}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    "{review.comment}"
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm italic">
+                No reviews yet.
               </p>
-           </div>
+            )}
+          </div>
+        </div>
+
+        {/* 9. FAQS */}
+        {course.faqs && course.faqs.length > 0 && (
+          <div
+            className="mb-8 animate-fade-in-up"
+            style={{ animationDelay: '0.35s' }}
+          >
+            <h2 className="text-xl font-bold text-indigo-400 mb-4 border-l-4 border-indigo-500 pl-3">
+              Frequently Asked Questions
+            </h2>
+
+            <div className="space-y-2">
+              {course.faqs.map((faq, idx) => {
+                const isOpen = openFaqIndex === idx;
+
+                return (
+                  <div
+                    key={idx}
+                    className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden transition-colors duration-200 hover:border-indigo-500/40"
+                  >
+                    <button
+                      onClick={() => toggleFaq(idx)}
+                      className="w-full flex justify-between items-center gap-3 p-4 text-left text-sm font-bold text-gray-200 hover:text-white hover:bg-zinc-800 transition-colors"
+                    >
+                      <span>{faq.question}</span>
+
+                      <span
+                        className={`shrink-0 text-indigo-400 transition-transform duration-300 ${
+                          isOpen
+                            ? 'rotate-180'
+                            : 'rotate-0'
+                        }`}
+                      >
+                        {isOpen ? (
+                          <Minus size={16} />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-4 pb-4 text-xs text-gray-400 leading-relaxed border-t border-zinc-800/50 pt-3 animate-accordion-reveal">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 10. POLICIES & SUPPORT */}
+        <div
+          className="border-t border-zinc-800 pt-8 pb-8 animate-fade-in-up"
+          style={{ animationDelay: '0.4s' }}
+        >
+          <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">
+            Support & Legal
+          </h3>
+
+          {/* Contact */}
+          <div className="mb-6 space-y-2">
+            {course.supportEmail && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Mail
+                  size={16}
+                  className="text-indigo-500"
+                />
+                {course.supportEmail}
+              </div>
+            )}
+
+            {course.supportPhone && (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <Phone
+                  size={16}
+                  className="text-indigo-500"
+                />
+                {course.supportPhone}
+              </div>
+            )}
+          </div>
+
+          {/* Expandable Policies */}
+          <div className="space-y-1">
+            {[
+              'Refund Policy',
+              'Terms and Conditions',
+              'Privacy Policy'
+            ].map((policyTitle) => {
+              const key = policyTitle
+                .split(' ')[0]
+                .toLowerCase();
+
+              const policyKey =
+                key as keyof NonNullable<Course['policies']>;
+
+              const isOpen = openPolicy === key;
+
+              return (
+                <div
+                  key={key}
+                  className="bg-zinc-900 rounded-lg overflow-hidden transition-colors duration-200 hover:border hover:border-indigo-500/30"
+                >
+                  <button
+                    onClick={() => togglePolicy(key)}
+                    className="w-full flex justify-between items-center p-3 text-xs font-bold text-gray-400 hover:text-white hover:bg-zinc-800 transition-colors"
+                  >
+                    {policyTitle}
+
+                    <span
+                      className={`transition-transform duration-300 ${
+                        isOpen
+                          ? 'rotate-180'
+                          : 'rotate-0'
+                      }`}
+                    >
+                      {isOpen ? (
+                        <Minus size={14} />
+                      ) : (
+                        <Plus size={14} />
+                      )}
+                    </span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="p-3 pt-0 text-[10px] text-gray-500 leading-relaxed border-t border-zinc-800/50 animate-accordion-reveal">
+                      {course.policies?.[policyKey] ||
+                        "No specific policy text provided."}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-[10px] text-gray-600">
+              © {new Date().getFullYear()}. All rights reserved.
+            </p>
+          </div>
         </div>
 
       </div>
 
       {/* MOBILE STICKY BUY BAR */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#18181b] border-t border-white/10 p-3 md:hidden z-50 flex items-center justify-between pb-safe shadow-2xl">
-         <div className="flex flex-col">
-            {discountPercentage > 0 && <span className="text-[10px] text-gray-400 line-through">{formatCurrency(originalPrice)}</span>}
-            <span className="text-xl font-black text-white">{formatCurrency(course.price)}</span>
-         </div>
-         <Button className="bg-indigo-600 text-white font-bold px-8 h-12 rounded-lg shadow-lg shadow-indigo-900/50 animate-pulse" onClick={() => onBuyNow(course)}>
-            Enroll Now
-         </Button>
+        <div className="flex flex-col">
+          {discountPercentage > 0 && (
+            <span className="text-[10px] text-gray-400 line-through">
+              {formatCurrency(originalPrice)}
+            </span>
+          )}
+
+          <span className="text-xl font-black text-white">
+            {formatCurrency(course.price)}
+          </span>
+        </div>
+
+        <Button
+          className="bg-indigo-600 text-white font-bold px-8 h-12 rounded-lg shadow-lg shadow-indigo-900/50 animate-pulse"
+          onClick={() => onBuyNow(course)}
+        >
+          Enroll Now
+        </Button>
       </div>
 
-      {/* VIDEO PREVIEW MODAL */}
-      {isVideoModalOpen && promoVideoUrl && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={() => setIsVideoModalOpen(false)}>
-          <div className="relative w-full max-w-4xl bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-             {/* Close Button */}
-             <button 
-               onClick={() => setIsVideoModalOpen(false)} 
-               className="absolute top-4 right-4 z-10 text-white bg-black/50 hover:bg-white/20 rounded-full p-2 transition-colors"
-             >
-               <X size={24} />
-             </button>
-             
-             {/* Video Frame */}
-             <div className="aspect-video w-full bg-black">
-               <iframe 
-                 src={promoVideoUrl + "&autoplay=1"} 
-                 className="w-full h-full" 
-                 title="Course Preview" 
-                 allow="autoplay; encrypted-media; gyroscope; picture-in-picture" 
-                 allowFullScreen
-               ></iframe>
-             </div>
-             
-             <div className="p-4 bg-zinc-900 border-t border-zinc-800 flex justify-between items-center">
-                <span className="text-sm font-bold text-gray-300">Preview: {course.title}</span>
-                <Button size="sm" onClick={() => { setIsVideoModalOpen(false); onBuyNow(course); }}>
-                   Get Full Access
-                </Button>
-             </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
