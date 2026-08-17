@@ -1,4 +1,3 @@
-
 declare global {
   interface Window {
     Razorpay: any;
@@ -20,9 +19,9 @@ export interface Review {
 
 export interface Coupon {
   id: string;
-  code: string;       // e.g. "WELCOME50"
-  type: 'percent' | 'flat'; 
-  value: number;      // e.g. 50 (if percent) or 500 (if flat)
+  code: string;
+  type: 'percent' | 'flat';
+  value: number;
   isActive: boolean;
 }
 
@@ -31,7 +30,7 @@ export interface Course {
   title: string;
   instructor: string;
   price: number;
-  originalPrice?: number; // Added field for MRP
+  originalPrice?: number;
   rating: number;
   students: number;
   image: string;
@@ -42,30 +41,35 @@ export interface Course {
   description: string;
   curriculum: string[];
   tags: string[];
-  // New Fields for Course Editor
-  faqs?: { question: string; answer: string }[];
+
+  faqs?: {
+    question: string;
+    answer: string;
+  }[];
+
   policies?: {
     refund?: string;
     privacy?: string;
     license?: string;
-    terms?: string; 
+    terms?: string;
   };
-  // Sidebar specific fields
+
   guarantee?: string;
   features?: string[];
+
   bonuses?: Bonus[];
-  bonusTotalValue?: string; 
-  // Support Info
+  bonusTotalValue?: string;
+
   supportEmail?: string;
   supportPhone?: string;
-  // Fake Stats
+
   reviews?: Review[];
-  // Course Specific Coupons
+
   coupons?: Coupon[];
 }
 
 export interface CartItem extends Course {
-  cartId: string; 
+  cartId: string;
 }
 
 export interface MerchantSettings {
@@ -75,26 +79,50 @@ export interface MerchantSettings {
   number: string;
 }
 
+export interface PaymentLink {
+  id: string;
+  amount: number;
+  url: string;
+  label?: string;
+}
+
 export interface Transaction {
-  id: string; 
-  firebaseKey?: string; // Direct reference to Firebase node for updates
-  transactionId?: string; 
+  id: string;
+  firebaseKey?: string;
+  transactionId?: string;
+
   courseId: string;
   courseTitle: string;
+
   amount: number;
-  originalAmount?: number; // Store original price before discount
-  couponCode?: string;     // Store which coupon was used
+  originalAmount?: number;
+
+  couponCode?: string;
+
   date: string;
+
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
-  status: 'success' | 'failed' | 'pending'; 
-  approvalStatus?: 'pending' | 'approved' | 'rejected'; 
+
+  status: 'success' | 'failed' | 'pending';
+
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+
   failureReason?: string;
 }
 
-export type ViewState = 
-  | { type: 'COURSE_DETAIL'; courseId: string }
-  | { type: 'CHECKOUT' }
-  | { type: 'ADMIN_LOGIN' }
-  | { type: 'SELLER_DASHBOARD' };
+export type ViewState =
+  | {
+      type: 'COURSE_DETAIL';
+      courseId: string;
+    }
+  | {
+      type: 'CHECKOUT';
+    }
+  | {
+      type: 'ADMIN_LOGIN';
+    }
+  | {
+      type: 'SELLER_DASHBOARD';
+    };
