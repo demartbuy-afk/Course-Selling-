@@ -1,49 +1,286 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OmniLearn Pro</title>
+    <title>Ethikkalorg</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
     <style>
-      body { font-family: 'Inter', sans-serif; }
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+
       /* Custom Scrollbar */
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: #f1f1f1; }
-      ::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
-      .perspective-1000 { perspective: 1000px; }
-      .scrollbar-hide::-webkit-scrollbar { display: none; }
-      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #c7c7cc;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a1a1aa;
+      }
+
+      .perspective-1000 {
+        perspective: 1000px;
+      }
+
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
       /* Animation Utilities */
       @keyframes blob {
-        0% { transform: translate(0px, 0px) scale(1); }
-        33% { transform: translate(30px, -50px) scale(1.1); }
-        66% { transform: translate(-20px, 20px) scale(0.9); }
-        100% { transform: translate(0px, 0px) scale(1); }
+        0% {
+          transform: translate(0px, 0px) scale(1);
+        }
+
+        33% {
+          transform: translate(30px, -50px) scale(1.1);
+        }
+
+        66% {
+          transform: translate(-20px, 20px) scale(0.9);
+        }
+
+        100% {
+          transform: translate(0px, 0px) scale(1);
+        }
       }
-      .animate-blob { animation: blob 7s infinite; }
-      .animation-delay-2000 { animation-delay: 2s; }
+
+      .animate-blob {
+        animation: blob 7s infinite;
+      }
+
+      .animation-delay-2000 {
+        animation-delay: 2s;
+      }
+
+      /* Course Page Animations */
+      @keyframes fadeInUp {
+        0% {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      @keyframes accordionReveal {
+        0% {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .animate-accordion-reveal {
+        animation: accordionReveal 0.25s ease-out both;
+      }
+
+      @keyframes priceGlow {
+        0%,
+        100% {
+          text-shadow: 0 0 0px rgba(99, 102, 241, 0);
+        }
+
+        50% {
+          text-shadow: 0 0 16px rgba(99, 102, 241, 0.45);
+        }
+      }
+
+      .animate-price-glow {
+        animation: priceGlow 3.5s ease-in-out infinite;
+      }
+
+      /* Hacker-style Loading Screen */
+      @keyframes matrixFall {
+        0% {
+          transform: translateY(-100%);
+        }
+
+        100% {
+          transform: translateY(100%);
+        }
+      }
+
+      .animate-matrix-fall {
+        animation-name: matrixFall;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+      }
+
+      @keyframes hackerGlitch {
+        0%,
+        100% {
+          text-shadow: 2px 0 #ff00ea, -2px 0 #00fff9;
+          transform: translate(0, 0);
+        }
+
+        25% {
+          text-shadow: -2px 0 #ff00ea, 2px 0 #00fff9;
+          transform: translate(-1px, 1px);
+        }
+
+        50% {
+          text-shadow: 2px 0 #00fff9, -2px 0 #ff00ea;
+          transform: translate(1px, -1px);
+        }
+
+        75% {
+          text-shadow: -1px 0 #00fff9, 1px 0 #ff00ea;
+          transform: translate(0, 0);
+        }
+      }
+
+      .animate-hacker-glitch {
+        animation: hackerGlitch 1.4s infinite;
+      }
+
+      @keyframes cursorBlink {
+        0%,
+        49% {
+          opacity: 1;
+        }
+
+        50%,
+        100% {
+          opacity: 0;
+        }
+      }
+
+      .animate-cursor-blink {
+        animation: cursorBlink 0.9s steps(1) infinite;
+      }
+
+      .bg-scanlines {
+        background-image: repeating-linear-gradient(
+          to bottom,
+          rgba(74, 222, 128, 0.06),
+          rgba(74, 222, 128, 0.06) 1px,
+          transparent 1px,
+          transparent 3px
+        );
+      }
+
+      /* Cyber Loading Logo */
+      @keyframes cyberLogoSpin {
+        from {
+          transform: rotate(0deg);
+        }
+
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes cyberLogoSpinRev {
+        from {
+          transform: rotate(0deg);
+        }
+
+        to {
+          transform: rotate(-360deg);
+        }
+      }
+
+      @keyframes cyberLogoPulseGlow {
+        0%,
+        100% {
+          opacity: 0.5;
+          transform: scale(0.92);
+        }
+
+        50% {
+          opacity: 1;
+          transform: scale(1.06);
+        }
+      }
+
+      @keyframes cyberLogoBlink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+
+        50% {
+          opacity: 0.35;
+        }
+      }
+
+      .cyber-logo-ticks {
+        animation: cyberLogoSpin 14s linear infinite;
+        transform-origin: 85px 85px;
+      }
+
+      .cyber-logo-arc-red {
+        animation: cyberLogoSpinRev 3.6s linear infinite;
+        transform-origin: 85px 85px;
+      }
+
+      .cyber-logo-arc-cyan {
+        animation: cyberLogoSpin 5s linear infinite;
+        transform-origin: 85px 85px;
+      }
+
+      .cyber-logo-glow {
+        animation: cyberLogoPulseGlow 3.4s ease-in-out infinite;
+      }
+
+      .cyber-logo-dot {
+        animation: cyberLogoBlink 2s ease-in-out infinite;
+      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
-  }
-}
-</script>
-</head>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://aistudiocdn.com/react@^19.2.0",
+          "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+          "react/": "https://aistudiocdn.com/react@^19.2.0/",
+          "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+          "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+          "vite": "https://aistudiocdn.com/vite@^7.2.4",
+          "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+        }
+      }
+    </script>
+  </head>
+
   <body>
     <div id="root"></div>
+
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
