@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CourseDetail } from './components/CourseDetail';
 import { AddCourseModal } from './components/AddCourseModal';
@@ -6,10 +5,10 @@ import { ShareModal } from './components/ShareModal';
 import { Checkout } from './components/Checkout';
 import { SellerDashboard } from './components/SellerDashboard';
 import { AdminLogin } from './components/AdminLogin';
+import { HackerLoader } from './components/HackerLoader';
 import { Course, CartItem, ViewState, Transaction } from './types';
 import { MOCK_COURSES } from './constants';
-import { Loader2 } from 'lucide-react';
-import { fetchCourses, fetchTransactions, saveCourseToDb, deleteCourseFromDb, saveTransactionToDb, seedInitialCourses, resolveShortLink } from './services/firebase';
+import { fetchCourses, fetchTransactions, saveCourseToDb, deleteCourseFromDb, saveTransactionToDb, updateTransactionFields, seedInitialCourses, resolveShortLink } from './services/firebase';
 
 const App: React.FC = () => {
   // UI State - Initial view will be determined by data loading
@@ -48,22 +47,25 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // 2. Load Courses & Transactions from Firebase & Handle URL Routing
+  // 2. Load Courses from Firebase & Handle URL Routing
+  // (Transactions are only needed for the Admin Dashboard, so they are
+  // fetched lazily below instead of on every customer page load - this
+  // was previously slowing down every visit.)
   useEffect(() => {
     const loadData = async () => {
       setIsLoadingData(true);
-      
-      // Attempt to seed first if empty
-      await seedInitialCourses(MOCK_COURSES);
 
-      // Fetch
-      const [fetchedCourses, fetchedTxns] = await Promise.all([
-        fetchCourses(),
-        fetchTransactions()
-      ]);
+      // Fetch courses first (fast path - DB is already seeded in almost all cases)
+      let fetchedCourses = await fetchCourses();
+
+      // Only seed if the database is genuinely empty (first-time setup).
+      // This avoids two extra network round-trips on every normal page load.
+      if (fetchedCourses.length === 0) {
+        await seedInitialCourses(MOCK_COURSES);
+        fetchedCourses = await fetchCourses();
+      }
 
       setCourses(fetchedCourses);
-      setTransactions(fetchedTxns);
       setIsLoadingData(false);
 
       // --- URL ROUTING LOGIC ---
@@ -74,6 +76,8 @@ const App: React.FC = () => {
       
       // 1. Check for Admin Panel Access
       if (panelParam === 'admin') {
+        // Transactions are only needed in the admin dashboard - load them now.
+        fetchTransactions().then(setTransactions);
         const savedAuth = localStorage.getItem('omnilearn_admin_auth');
         if (savedAuth === 'true') {
            setView({ type: 'SELLER_DASHBOARD' });
@@ -131,6 +135,23 @@ const App: React.FC = () => {
   const handleTransactionComplete = async (newTransactions: Transaction[]) => {
     setTransactions(prev => [...newTransactions, ...prev]);
     for (const txn of newTransactions) {
+      // If this transaction already has a firebaseKey, it's upgrading an
+      // existing "abandoned" lead record (customer who filled details and
+      // then completed payment) - update it in place instead of creating a
+      // duplicate entry in the admin panel.
+      if (txn.firebaseKey) {
+        await updateTransactionFields(txn.firebaseKey, {
+          transactionId: txn.transactionId,
+          amount: txn.amount,
+          originalAmount: txn.originalAmount,
+          couponCode: txn.couponCode,
+          date: txn.date,
+          status: txn.status,
+          approvalStatus: txn.approvalStatus,
+          checkoutStage: undefined,
+        });
+        continue;
+      }
       const firebaseKey = await saveTransactionToDb(txn);
       const txnIndex = newTransactions.indexOf(txn);
       if (txnIndex !== -1 && firebaseKey) {
@@ -216,14 +237,7 @@ const App: React.FC = () => {
   // Render content based on current view
   const renderContent = () => {
     if (isLoadingData) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50">
-          <div className="text-center">
-             <Loader2 size={48} className="animate-spin text-indigo-600 mx-auto mb-4"/>
-             <p className="text-gray-500 font-medium">Loading...</p>
-          </div>
-        </div>
-      );
+      return <HackerLoader />;
     }
 
     if (!view) return null;
