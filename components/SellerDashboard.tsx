@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Course, Transaction, MerchantSettings, PaymentLink } from '../types';
 import { formatCurrency } from '../utils';
 import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus, fetchPaymentLinks, savePaymentLinks } from '../services/firebase';
-import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2, Globe } from 'lucide-react';
+import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2, Globe, Mail, Phone } from 'lucide-react';
 import { Button } from './ui/Button';
 
 interface SellerDashboardProps {
@@ -17,7 +17,7 @@ interface SellerDashboardProps {
 }
 
 export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, transactions, onAddCourse, onEditCourse, onDeleteCourse, onLogout, onShareCourse, onPreviewWebsite }) => {
-  const [activeTab, setActiveTab] = useState<'courses' | 'approvals' | 'transactions' | 'settings'>('courses');
+  const [activeTab, setActiveTab] = useState<'courses' | 'approvals' | 'transactions' | 'leads' | 'settings'>('courses');
   const [selectedCourseOrders, setSelectedCourseOrders] = useState<string | null>(null);
   
   // Settings State
@@ -43,6 +43,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
   // Calculate Stats
   const successTransactions = transactions.filter(t => t.status === 'success');
   const pendingTransactions = transactions.filter(t => t.approvalStatus === 'pending');
+  const abandonedLeads = transactions.filter(t => t.status === 'abandoned');
   const totalRevenue = successTransactions.reduce((acc, t) => acc + t.amount, 0);
   const totalStudents = courses.reduce((acc, c) => acc + c.students, 0); 
 
@@ -184,6 +185,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                className={`px-6 md:px-8 py-4 font-medium text-sm whitespace-nowrap transition-colors ${activeTab === 'transactions' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'text-gray-500 hover:text-gray-700'}`}
              >
                History
+             </button>
+             <button 
+               onClick={() => setActiveTab('leads')}
+               className={`px-6 md:px-8 py-4 font-medium text-sm whitespace-nowrap transition-colors flex items-center gap-2 ${activeTab === 'leads' ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'text-gray-500 hover:text-gray-700'}`}
+             >
+               Incomplete Checkouts
+               {abandonedLeads.length > 0 && (
+                  <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{abandonedLeads.length}</span>
+               )}
              </button>
              <button 
                onClick={() => setActiveTab('settings')}
@@ -363,6 +373,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                          <CheckCircle size={12}/> Paid
                                       </span>
+                                   ) : t.status === 'abandoned' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                         <AlertCircle size={12}/> Incomplete
+                                      </span>
                                    ) : t.approvalStatus === 'pending' ? (
                                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
                                          <Clock size={12}/> Pending
@@ -378,6 +392,100 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                       )}
                   </tbody>
                 </table>
+              </div>
+           )}
+
+           {/* Tab Content: INCOMPLETE CHECKOUTS (Abandoned Leads) */}
+           {activeTab === 'leads' && (
+              <div className="overflow-x-auto">
+                 <p className="text-xs text-gray-500 px-6 pt-5 pb-1">
+                    Customers who started checkout but never completed payment. Reach out to help them finish their purchase.
+                 </p>
+                 {abandonedLeads.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 flex flex-col items-center">
+                       <CheckCircle size={48} className="text-green-200 mb-4"/>
+                       <p>No incomplete checkouts right now.</p>
+                    </div>
+                 ) : (
+                    <table className="w-full text-left text-sm min-w-[800px] md:min-w-full">
+                       <thead className="bg-orange-50 text-orange-900 font-medium">
+                          <tr>
+                             <th className="px-6 py-4">Date</th>
+                             <th className="px-6 py-4">Customer</th>
+                             <th className="px-6 py-4">Course / Amount</th>
+                             <th className="px-6 py-4">Reached</th>
+                             <th className="px-6 py-4 text-right">Follow Up</th>
+                          </tr>
+                       </thead>
+                       <tbody className="divide-y divide-gray-100">
+                          {[...abandonedLeads].reverse().map(t => (
+                             <tr key={t.id} className="hover:bg-orange-50/30 transition-colors">
+                                <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
+                                   {new Date(t.date).toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4">
+                                   <div className="font-bold text-gray-900">{t.customerName}</div>
+                                   <div className="text-xs text-gray-500">{t.customerEmail}</div>
+                                   <div className="text-xs text-gray-500">{t.customerPhone}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                   <div className="text-gray-900 max-w-[220px] truncate">{t.courseTitle}</div>
+                                   <div className="font-bold">
+                                      {formatCurrency(t.amount)}
+                                      {t.couponCode && (
+                                         <span className="text-[10px] text-green-600 bg-green-50 px-1 rounded inline-block ml-1">{t.couponCode}</span>
+                                      )}
+                                   </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                   {t.checkoutStage === 'PAYMENT_LINK_OPENED' ? (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                         Opened payment page
+                                      </span>
+                                   ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                         Filled details only
+                                      </span>
+                                   )}
+                                </td>
+                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                   <div className="flex items-center justify-end gap-2">
+                                      {t.customerEmail && (
+                                         <a
+                                           href={`mailto:${t.customerEmail}?subject=${encodeURIComponent('Complete your purchase: ' + t.courseTitle)}&body=${encodeURIComponent(`Hi ${t.customerName}, we noticed you didn't finish enrolling in "${t.courseTitle}". Would you like help completing your payment?`)}`}
+                                           className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                           title="Email"
+                                         >
+                                            <Mail size={16}/>
+                                         </a>
+                                      )}
+                                      {t.customerPhone && (
+                                         <a
+                                           href={`https://wa.me/${t.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi ${t.customerName}, we noticed you didn't finish enrolling in "${t.courseTitle}". Would you like help completing your payment?`)}`}
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                           title="WhatsApp"
+                                         >
+                                            <Smartphone size={16}/>
+                                         </a>
+                                      )}
+                                      {t.customerPhone && (
+                                         <a
+                                           href={`tel:${t.customerPhone}`}
+                                           className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                           title="Call"
+                                         >
+                                            <Phone size={16}/>
+                                         </a>
+                                      )}
+                                   </div>
+                                </td>
+                             </tr>
+                          ))}
+                       </tbody>
+                    </table>
+                 )}
               </div>
            )}
 
