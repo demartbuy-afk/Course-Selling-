@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Course, Transaction, MerchantSettings, PaymentLink } from '../types';
 import { formatCurrency } from '../utils';
-import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus, fetchPaymentLinks, savePaymentLinks } from '../services/firebase';
+import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus, fetchPaymentLinks, savePaymentLinks, resetPaymentLinkUsage } from '../services/firebase';
 import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2, Globe, Mail, Phone } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -78,9 +78,29 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
       return;
     }
     setIsSavingPaymentLinks(true);
-    await savePaymentLinks(paymentLinks);
+    // Merge against the latest server state first - a customer may have
+    // claimed a link (marked it used) after this screen was loaded, and we
+    // must not silently undo that just because the admin edited a label.
+    const fresh = await fetchPaymentLinks();
+    const freshById = new Map(fresh.map(l => [l.id, l]));
+    const merged = paymentLinks.map(l => {
+      const current = freshById.get(l.id);
+      return current ? { ...l, used: current.used, usedAt: current.usedAt } : l;
+    });
+    await savePaymentLinks(merged);
+    setPaymentLinks(merged);
     alert("Payment links updated successfully.");
     setIsSavingPaymentLinks(false);
+  };
+
+  const handleResetPaymentLink = async (id: string) => {
+    if (!window.confirm("Mark this link as available again? Only do this if the customer did NOT actually pay.")) return;
+    await resetPaymentLinkUsage(id);
+    setPaymentLinks(prev => prev.map(l => l.id === id ? { ...l, used: false, usedAt: undefined } : l));
+  };
+
+  const refreshPaymentLinkStatus = async () => {
+    setPaymentLinks(await fetchPaymentLinks());
   };
 
   const handleApproval = async (txn: Transaction, action: 'approved' | 'rejected') => {
@@ -496,17 +516,33 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                  <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
                     <DollarSign className="text-indigo-600"/> Payment Links (by Amount)
                  </h3>
-                 <p className="text-sm text-gray-500 mb-6">
-                    Add one payment link per exact price a customer might pay - the full course price, and one for every coupon-discounted price. Checkout will automatically open the link that matches what the customer actually owes.
+                 <p className="text-sm text-gray-500 mb-2">
+                    Add several single-use payment links for the same amount (e.g. 10 links for 鈧�499). Checkout always hands out the next unused link in that pool, so once one customer uses a link it will never be opened again for someone else.
                  </p>
+                 <button onClick={refreshPaymentLinkStatus} className="text-xs font-bold text-indigo-600 hover:underline mb-4">
+                    Refresh availability status
+                 </button>
+                 {paymentLinks.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                       {Array.from(new Set(paymentLinks.map(l => l.amount))).sort((a, b) => a - b).map(amount => {
+                          const group = paymentLinks.filter(l => l.amount === amount);
+                          const available = group.filter(l => !l.used).length;
+                          return (
+                             <span key={amount} className={`text-xs font-bold px-3 py-1.5 rounded-full ${available === 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                鈧箋amount}: {available} available / {group.length} total
+                             </span>
+                          );
+                       })}
+                    </div>
+                 )}
                  <div className="space-y-3 mb-4">
                     {paymentLinks.length === 0 && (
                        <p className="text-sm text-gray-400 italic">No payment links added yet.</p>
                     )}
                     {paymentLinks.map((link) => (
                        <div key={link.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <div className="w-full sm:w-32">
-                             <label className="block text-xs font-bold text-gray-500 mb-1">Amount (₹)</label>
+                          <div className="w-full sm:w-28">
+                             <label className="block text-xs font-bold text-gray-500 mb-1">Amount (鈧�)</label>
                              <input
                                type="number"
                                min={1}
@@ -526,7 +562,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                                onChange={(e) => updatePaymentLinkRow(link.id, 'url', e.target.value)}
                              />
                           </div>
-                          <div className="w-full sm:w-36">
+                          <div className="w-full sm:w-32">
                              <label className="block text-xs font-bold text-gray-500 mb-1">Note (optional)</label>
                              <input
                                type="text"
@@ -536,13 +572,29 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                                onChange={(e) => updatePaymentLinkRow(link.id, 'label', e.target.value)}
                              />
                           </div>
-                          <button
-                            onClick={() => removePaymentLinkRow(link.id)}
-                            className="self-end sm:self-center text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                            title="Remove"
-                          >
-                             <Trash2 size={18}/>
-                          </button>
+                          <div className="w-full sm:w-auto flex items-center gap-1 self-end sm:self-center">
+                             {link.used ? (
+                                <>
+                                   <span className="text-xs font-bold px-2 py-1.5 rounded-lg bg-red-100 text-red-700 whitespace-nowrap">Used</span>
+                                   <button
+                                     onClick={() => handleResetPaymentLink(link.id)}
+                                     className="text-xs font-bold px-2 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-100 whitespace-nowrap"
+                                     title="Mark available again (only if customer didn't actually pay)"
+                                   >
+                                      Reset
+                                   </button>
+                                </>
+                             ) : (
+                                <span className="text-xs font-bold px-2 py-1.5 rounded-lg bg-green-100 text-green-700 whitespace-nowrap">Available</span>
+                             )}
+                             <button
+                               onClick={() => removePaymentLinkRow(link.id)}
+                               className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                               title="Remove"
+                             >
+                                <Trash2 size={18}/>
+                             </button>
+                          </div>
                        </div>
                     ))}
                  </div>
