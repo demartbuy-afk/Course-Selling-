@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Lock, Mail, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from './ui/Button';
+import { adminSignIn } from '../services/firebase';
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -15,26 +16,24 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Hardcoded Credentials as requested
-  const ADMIN_CREDS = {
-    email: "yuvrajsingh11171@gmail.com",
-    password: "Yuvraj@1203#₹__"
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simulate network delay for realism
-    setTimeout(() => {
-      if (email === ADMIN_CREDS.email && password === ADMIN_CREDS.password) {
-        onLogin();
-      } else {
-        setError('Invalid Email or Password. Access Denied.');
-        setIsLoading(false);
-      }
-    }, 1000);
+    try {
+      // Real Firebase Authentication - the admin account is created once
+      // in the Firebase Console (Authentication -> Users -> Add user),
+      // never stored in this frontend code.
+      await adminSignIn(email, password);
+      onLogin();
+    } catch (err) {
+      // Deliberately vague - don't reveal whether the email or the
+      // password was wrong, so this can't be used to guess valid admin emails.
+      setError('Invalid Email or Password. Access Denied.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -87,7 +86,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all sm:text-sm"
-                    placeholder="••••••••"
+                    placeholder="鈥⑩€⑩€⑩€⑩€⑩€⑩€⑩€�"
                  />
                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                     <button
