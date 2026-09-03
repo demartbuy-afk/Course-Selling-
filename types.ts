@@ -82,6 +82,11 @@ export interface PaymentLink {
   amount: number;
   url: string;
   label?: string;
+  // Single-use payment links: once a customer is sent to this link it's
+  // marked used so the NEXT customer at the same amount automatically
+  // gets a different, still-unused link from the pool.
+  used?: boolean;
+  usedAt?: string;
 }
 
 export interface Transaction {
