@@ -3,7 +3,7 @@ import { CartItem, Transaction, Coupon, PaymentLink } from '../types';
 import { formatCurrency } from '../utils';
 import { Button } from './ui/Button';
 import { Loader2, Smartphone, ShieldCheck, ExternalLink, ArrowRight, Clock, CreditCard, Tag, ArrowLeft, Lock, Building2, Landmark, AlertCircle } from 'lucide-react';
-import { fetchPaymentLinks, saveTransactionToDb, updateTransactionFields } from '../services/firebase';
+import { fetchPaymentLinks, saveTransactionToDb, updateTransactionFields, claimPaymentLink } from '../services/firebase';
 
 interface CheckoutProps {
   items: CartItem[];
@@ -69,12 +69,16 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
   // Checkout picks the link whose amount matches finalTotal, so a
   // coupon-discounted order never opens the full-price link.
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
+  const [isOpeningLink, setIsOpeningLink] = useState(false);
   useEffect(() => {
     fetchPaymentLinks().then(setPaymentLinks);
   }, []);
 
   const roundedFinalTotal = Math.round(finalTotal);
-  const matchedPaymentLink = paymentLinks.find(l => Math.round(l.amount) === roundedFinalTotal);
+  // Pick the first UNUSED link for this exact amount - once a link has been
+  // handed to a customer it's marked used and the pool moves on to the next
+  // one, so nobody ever gets sent to an already-paid link.
+  const matchedPaymentLink = paymentLinks.find(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
 
   // --- Handlers ---
 
@@ -184,15 +188,49 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
     }, 1500);
   };
 
-  const handlePayNowClick = () => {
-    if (!matchedPaymentLink) return; // Button is disabled in this case; no-op safeguard.
-    // Update the lead record to show admin the customer reached the payment page.
-    leadRecords.forEach(l => {
-      if (l.firebaseKey) updateTransactionFields(l.firebaseKey, { checkoutStage: 'PAYMENT_LINK_OPENED' });
-    });
-    // Open the payment link in a new tab so the customer can easily
-    // return to the website afterwards.
-    window.open(matchedPaymentLink.url, '_blank', 'noopener,noreferrer');
+  const handlePayNowClick = async () => {
+    if (!matchedPaymentLink || isOpeningLink) return; // Button is disabled in this case; no-op safeguard.
+    setIsOpeningLink(true);
+    try {
+      // Try every currently-known unused link for this amount, in order,
+      // atomically claiming one. If another customer claims one a split
+      // second before us, move to the next candidate instead of failing.
+      let candidates = paymentLinks.filter(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
+      let claimedLink: PaymentLink | null = null;
+
+      for (const candidate of candidates) {
+        const claimed = await claimPaymentLink(candidate.id);
+        if (claimed) { claimedLink = candidate; break; }
+      }
+
+      // Every candidate we knew about got taken in the meantime - refetch
+      // once in case new links were added or others freed up.
+      if (!claimedLink) {
+        const fresh = await fetchPaymentLinks();
+        setPaymentLinks(fresh);
+        candidates = fresh.filter(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
+        for (const candidate of candidates) {
+          const claimed = await claimPaymentLink(candidate.id);
+          if (claimed) { claimedLink = candidate; break; }
+        }
+      }
+
+      if (!claimedLink) {
+        return; // matchedPaymentLink will re-derive as undefined once state updates, showing the "not available" message.
+      }
+
+      setPaymentLinks(prev => prev.map(l => l.id === claimedLink!.id ? { ...l, used: true, usedAt: new Date().toISOString() } : l));
+
+      // Update the lead record to show admin the customer reached the payment page.
+      leadRecords.forEach(l => {
+        if (l.firebaseKey) updateTransactionFields(l.firebaseKey, { checkoutStage: 'PAYMENT_LINK_OPENED' });
+      });
+      // Open the payment link in a new tab so the customer can easily
+      // return to the website afterwards.
+      window.open(claimedLink.url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsOpeningLink(false);
+    }
   };
 
   // --- RENDER STEPS ---
@@ -326,10 +364,10 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
 
                                <Button
                                   onClick={handlePayNowClick}
-                                  disabled={!matchedPaymentLink}
-                                  className={`w-full h-12 sm:h-14 text-base sm:text-lg shadow-lg flex items-center justify-center gap-2 ${matchedPaymentLink ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'}`}
+                                  disabled={!matchedPaymentLink || isOpeningLink}
+                                  className={`w-full h-12 sm:h-14 text-base sm:text-lg shadow-lg flex items-center justify-center gap-2 ${matchedPaymentLink && !isOpeningLink ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'}`}
                                >
-                                  Pay Now <ExternalLink size={18}/>
+                                  {isOpeningLink ? 'Opening...' : <>Pay Now <ExternalLink size={18}/></>}
                                </Button>
                                {matchedPaymentLink ? (
                                  <p className="text-[11px] text-gray-400 mt-3">
@@ -434,7 +472,7 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
                                      </div>
                                      <h3 className="font-bold text-gray-900">EMI Not Available</h3>
                                      <p className="text-sm text-gray-500 mt-2">
-                                        Minimum order value for EMI is <span className="font-bold">₹5,000</span>.
+                                        Minimum order value for EMI is <span className="font-bold">鈧�5,000</span>.
                                      </p>
                                      <p className="text-xs text-gray-400 mt-1">Current Total: {formatCurrency(finalTotal)}</p>
                                   </div>
