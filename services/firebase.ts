@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getDatabase, ref, get, set, push, remove, child, update, query, orderByChild, equalTo } from "firebase/database";
+import { getDatabase, ref, get, set, push, remove, child, update, query, orderByChild, equalTo, runTransaction } from "firebase/database";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserLocalPersistence, User } from "firebase/auth";
 import { Course, Transaction, MerchantSettings, Coupon, PaymentLink } from "../types";
 
 // Your web app's Firebase configuration
@@ -19,6 +20,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const db = getDatabase(app);
+const auth = getAuth(app);
+// Keep the admin session across page reloads (Firebase's own secure,
+// tamper-proof session token - not a fake-able localStorage flag).
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+// ==================== ADMIN AUTHENTICATION ====================
+// Real Firebase Authentication - replaces the old hardcoded
+// email/password check that lived directly in the frontend bundle.
+// The admin user must be created once in the Firebase Console under
+// Authentication -> Users (see setup notes in AdminLogin.tsx).
+export const adminSignIn = (email: string, password: string) =>
+  signInWithEmailAndPassword(auth, email.trim(), password);
+
+export const adminSignOut = () => signOut(auth);
+
+// Fires immediately with the current user (or null), then again on every
+// sign-in/sign-out. This is the single source of truth for "is an admin
+// logged in" - never trust a localStorage flag for this.
+export const subscribeToAdminAuth = (callback: (user: User | null) => void) =>
+  onAuthStateChanged(auth, callback);
 
 // --- HELPER FUNCTIONS ---
 
@@ -199,17 +220,48 @@ export const fetchPaymentLinks = async (): Promise<PaymentLink[]> => {
 
 export const savePaymentLinks = async (links: PaymentLink[]) => {
   try {
-    const obj: Record<string, { amount: number; url: string; label: string }> = {};
+    const obj: Record<string, { amount: number; url: string; label: string; used: boolean; usedAt: string | null }> = {};
     links.forEach(link => {
       obj[link.id] = {
         amount: link.amount,
         url: link.url,
-        label: link.label || ''
+        label: link.label || '',
+        used: !!link.used,
+        usedAt: link.usedAt || null
       };
     });
     await set(ref(db, 'paymentLinks'), obj);
   } catch (error) {
     console.error("Error saving payment links:", error);
+    throw error;
+  }
+};
+
+// Atomically claims one payment link so two customers checking out for the
+// same amount at the same moment can never be handed the same single-use
+// link. Returns true only if this call is the one that claimed it.
+export const claimPaymentLink = async (linkId: string): Promise<boolean> => {
+  try {
+    const linkRef = ref(db, `paymentLinks/${linkId}`);
+    const result = await runTransaction(linkRef, (current) => {
+      if (!current) return current; // link no longer exists - abort
+      if (current.used) return; // already claimed - abort transaction
+      return { ...current, used: true, usedAt: new Date().toISOString() };
+    });
+    return result.committed && !!result.snapshot.val();
+  } catch (error) {
+    console.error("Error claiming payment link:", error);
+    return false;
+  }
+};
+
+// Lets the admin free up a link again (e.g. a customer opened it but never
+// actually paid) so it re-enters the pool for the next customer.
+export const resetPaymentLinkUsage = async (linkId: string) => {
+  try {
+    await update(ref(db, `paymentLinks/${linkId}`), { used: false, usedAt: null });
+  } catch (error) {
+    console.error("Error resetting payment link:", error);
     throw error;
   }
 };
