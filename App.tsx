@@ -8,7 +8,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { HackerLoader } from './components/HackerLoader';
 import { Course, CartItem, ViewState, Transaction } from './types';
 import { MOCK_COURSES } from './constants';
-import { fetchCourses, fetchTransactions, saveCourseToDb, deleteCourseFromDb, saveTransactionToDb, updateTransactionFields, seedInitialCourses, resolveShortLink } from './services/firebase';
+import { fetchCourses, fetchTransactions, saveCourseToDb, deleteCourseFromDb, saveTransactionToDb, updateTransactionFields, seedInitialCourses, resolveShortLink, subscribeToAdminAuth, adminSignOut } from './services/firebase';
 
 const App: React.FC = () => {
   // UI State - Initial view will be determined by data loading
@@ -29,10 +29,14 @@ const App: React.FC = () => {
     isOpen: false, courseId: '', title: ''
   });
 
-  // Auth State
+  // Auth State - driven by real Firebase Authentication (see services/firebase.ts),
+  // not a fake-able localStorage flag. subscribeToAdminAuth below is the
+  // single source of truth.
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [isAdminAuthResolved, setIsAdminAuthResolved] = useState(false);
+  const [wantsAdminPanel, setWantsAdminPanel] = useState(false);
 
-  // 1. Load Cart & Auth from LocalStorage
+  // 1. Load Cart from LocalStorage, and subscribe to the real admin session
   useEffect(() => {
     const savedCart = localStorage.getItem('omnilearn_cart');
     if (savedCart) {
@@ -41,11 +45,20 @@ const App: React.FC = () => {
       } catch (e) { console.error(e); }
     }
 
-    const savedAuth = localStorage.getItem('omnilearn_admin_auth');
-    if (savedAuth === 'true') {
-      setIsAdminLoggedIn(true);
-    }
+    const unsubscribe = subscribeToAdminAuth((user) => {
+      setIsAdminLoggedIn(!!user);
+      setIsAdminAuthResolved(true);
+    });
+    return () => unsubscribe();
   }, []);
+
+  // Once we know the URL wants the admin panel AND Firebase has answered
+  // whether there's a real logged-in admin session, decide the view.
+  useEffect(() => {
+    if (wantsAdminPanel && isAdminAuthResolved) {
+      setView({ type: isAdminLoggedIn ? 'SELLER_DASHBOARD' : 'ADMIN_LOGIN' });
+    }
+  }, [wantsAdminPanel, isAdminAuthResolved, isAdminLoggedIn]);
 
   // 2. Load Courses from Firebase & Handle URL Routing
   // (Transactions are only needed for the Admin Dashboard, so they are
@@ -78,12 +91,10 @@ const App: React.FC = () => {
       if (panelParam === 'admin') {
         // Transactions are only needed in the admin dashboard - load them now.
         fetchTransactions().then(setTransactions);
-        const savedAuth = localStorage.getItem('omnilearn_admin_auth');
-        if (savedAuth === 'true') {
-           setView({ type: 'SELLER_DASHBOARD' });
-        } else {
-           setView({ type: 'ADMIN_LOGIN' });
-        }
+        setWantsAdminPanel(true);
+        // Don't decide the view yet - Firebase's real auth check
+        // (subscribeToAdminAuth) resolves asynchronously; the effect below
+        // sets ADMIN_LOGIN or SELLER_DASHBOARD once it has answered.
         return;
       }
 
@@ -213,15 +224,16 @@ const App: React.FC = () => {
   };
 
   const handleAdminLogin = () => {
-    setIsAdminLoggedIn(true);
-    localStorage.setItem('omnilearn_admin_auth', 'true');
+    // Firebase Auth already established the real session (adminSignIn was
+    // called from AdminLogin.tsx) - subscribeToAdminAuth will flip
+    // isAdminLoggedIn on its own. We just navigate.
     setView({ type: 'SELLER_DASHBOARD' });
   };
 
   const handleAdminLogout = () => {
-    setIsAdminLoggedIn(false);
-    localStorage.removeItem('omnilearn_admin_auth');
-    setView({ type: 'ADMIN_LOGIN' }); // Will show login screen
+    adminSignOut().finally(() => {
+      setView({ type: 'ADMIN_LOGIN' }); // Will show login screen
+    });
   };
 
   const handleWebsitePreview = () => {
