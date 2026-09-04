@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CartItem, Transaction, Coupon, PaymentLink } from '../types';
-import { formatCurrency } from '../utils';
+import QRCode from 'qrcode';
+import { CartItem, Transaction, Coupon, PaymentLink, MerchantSettings } from '../types';
+import { formatCurrency, buildUpiLink, isMobileDevice } from '../utils';
 import { Button } from './ui/Button';
-import { Loader2, Smartphone, ShieldCheck, ExternalLink, ArrowRight, Clock, CreditCard, Tag, ArrowLeft, Lock, Building2, Landmark, AlertCircle } from 'lucide-react';
-import { fetchPaymentLinks, saveTransactionToDb, updateTransactionFields, claimPaymentLink } from '../services/firebase';
+import { Loader2, Smartphone, ShieldCheck, ExternalLink, ArrowRight, Clock, CreditCard, Tag, ArrowLeft, Lock, Building2, Landmark, AlertCircle, Copy, Check } from 'lucide-react';
+import { fetchPaymentLinks, fetchMerchantSettings, saveTransactionToDb, updateTransactionFields } from '../services/firebase';
 
 interface CheckoutProps {
   items: CartItem[];
@@ -69,16 +70,46 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
   // Checkout picks the link whose amount matches finalTotal, so a
   // coupon-discounted order never opens the full-price link.
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
-  const [isOpeningLink, setIsOpeningLink] = useState(false);
+  const [merchantSettings, setMerchantSettings] = useState<MerchantSettings | null>(null);
   useEffect(() => {
     fetchPaymentLinks().then(setPaymentLinks);
+    fetchMerchantSettings().then(setMerchantSettings);
   }, []);
 
   const roundedFinalTotal = Math.round(finalTotal);
-  // Pick the first UNUSED link for this exact amount - once a link has been
-  // handed to a customer it's marked used and the pool moves on to the next
-  // one, so nobody ever gets sent to an already-paid link.
-  const matchedPaymentLink = paymentLinks.find(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
+  // Exactly one link per amount - admin adds a single payment link for each
+  // price point, and that same link is always the one shown/opened.
+  const matchedPaymentLink = paymentLinks.find(l => Math.round(l.amount) === roundedFinalTotal);
+  const qrModeActive = !!merchantSettings?.qrPaymentEnabled;
+
+  // --- Dynamic UPI QR code (generated for the exact order amount) ---
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrError, setQrError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const orderRef = React.useMemo(() => `ORD${Date.now().toString().slice(-8)}`, []);
+  const upiLink = merchantSettings?.upiId
+    ? buildUpiLink({
+        upiId: merchantSettings.upiId,
+        payeeName: merchantSettings.name,
+        amount: finalTotal,
+        note: items.map(i => i.title).join(', '),
+        txnRef: orderRef,
+      })
+    : '';
+
+  useEffect(() => {
+    if (!qrModeActive || !upiLink) return;
+    QRCode.toDataURL(upiLink, { width: 320, margin: 1 })
+      .then(setQrDataUrl)
+      .catch(() => setQrError('QR code nahi ban paaya. UPI ID check karein.'));
+  }, [qrModeActive, upiLink]);
+
+  const handleCopyUpiId = () => {
+    if (!merchantSettings?.upiId) return;
+    navigator.clipboard?.writeText(merchantSettings.upiId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // --- Handlers ---
 
@@ -188,49 +219,15 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
     }, 1500);
   };
 
-  const handlePayNowClick = async () => {
-    if (!matchedPaymentLink || isOpeningLink) return; // Button is disabled in this case; no-op safeguard.
-    setIsOpeningLink(true);
-    try {
-      // Try every currently-known unused link for this amount, in order,
-      // atomically claiming one. If another customer claims one a split
-      // second before us, move to the next candidate instead of failing.
-      let candidates = paymentLinks.filter(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
-      let claimedLink: PaymentLink | null = null;
-
-      for (const candidate of candidates) {
-        const claimed = await claimPaymentLink(candidate.id);
-        if (claimed) { claimedLink = candidate; break; }
-      }
-
-      // Every candidate we knew about got taken in the meantime - refetch
-      // once in case new links were added or others freed up.
-      if (!claimedLink) {
-        const fresh = await fetchPaymentLinks();
-        setPaymentLinks(fresh);
-        candidates = fresh.filter(l => Math.round(l.amount) === roundedFinalTotal && !l.used);
-        for (const candidate of candidates) {
-          const claimed = await claimPaymentLink(candidate.id);
-          if (claimed) { claimedLink = candidate; break; }
-        }
-      }
-
-      if (!claimedLink) {
-        return; // matchedPaymentLink will re-derive as undefined once state updates, showing the "not available" message.
-      }
-
-      setPaymentLinks(prev => prev.map(l => l.id === claimedLink!.id ? { ...l, used: true, usedAt: new Date().toISOString() } : l));
-
-      // Update the lead record to show admin the customer reached the payment page.
-      leadRecords.forEach(l => {
-        if (l.firebaseKey) updateTransactionFields(l.firebaseKey, { checkoutStage: 'PAYMENT_LINK_OPENED' });
-      });
-      // Open the payment link in a new tab so the customer can easily
-      // return to the website afterwards.
-      window.open(claimedLink.url, '_blank', 'noopener,noreferrer');
-    } finally {
-      setIsOpeningLink(false);
-    }
+  const handlePayNowClick = () => {
+    if (!matchedPaymentLink) return; // Button is disabled in this case; no-op safeguard.
+    // Update the lead record to show admin the customer reached the payment page.
+    leadRecords.forEach(l => {
+      if (l.firebaseKey) updateTransactionFields(l.firebaseKey, { checkoutStage: 'PAYMENT_LINK_OPENED' });
+    });
+    // Open the payment link in a new tab so the customer can easily
+    // return to the website afterwards.
+    window.open(matchedPaymentLink.url, '_blank', 'noopener,noreferrer');
   };
 
   // --- RENDER STEPS ---
@@ -256,6 +253,99 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
   }
 
   // --- PAYMENT GATEWAY UI ---
+  // --- QR / UPI-App PAYMENT UI (when admin has QR mode switched ON) ---
+  if (step === 'payment' && qrModeActive) {
+    const upiApps = [
+      { name: 'PhonePe', color: 'bg-[#5f259f]' },
+      { name: 'Google Pay', color: 'bg-white border border-gray-200 !text-gray-800' },
+      { name: 'Paytm', color: 'bg-[#00baf2]' },
+      { name: 'Any UPI App', color: 'bg-gray-800' },
+    ];
+    return (
+      <div className="min-h-screen bg-gray-100 pt-8 md:pt-16 px-4 pb-20">
+        <div className="max-w-lg mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2 text-gray-500 cursor-pointer hover:text-gray-900" onClick={() => setStep('details')}>
+              <ArrowLeft size={20} /> <span className="text-sm font-medium">Back</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Lock size={14} className="text-green-600" />
+              <span className="text-xs font-bold text-gray-500 uppercase">100% Secure Payment</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <span className="font-bold text-gray-700 text-sm">Scan & Pay via UPI</span>
+              <span className="font-black text-gray-900 text-lg">{formatCurrency(finalTotal)}</span>
+            </div>
+
+            {!merchantSettings?.upiId ? (
+              <div className="p-6 text-center text-sm text-red-600">
+                Online payment isn't set up yet. Please contact support before paying.
+              </div>
+            ) : (
+              <div className="p-6 md:p-8 text-center">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="UPI QR Code" className="mx-auto rounded-lg border border-gray-200 w-56 h-56 sm:w-64 sm:h-64" />
+                ) : qrError ? (
+                  <p className="text-sm text-red-600">{qrError}</p>
+                ) : (
+                  <div className="w-56 h-56 sm:w-64 sm:h-64 mx-auto flex items-center justify-center">
+                    <Loader2 size={28} className="animate-spin text-gray-400" />
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-3">Scan this with any UPI app to pay {formatCurrency(finalTotal)}</p>
+
+                <button onClick={handleCopyUpiId} className="mt-3 inline-flex items-center gap-1.5 text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1.5 hover:bg-gray-100">
+                  {merchantSettings.upiId} {copied ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}
+                </button>
+
+                <div className="my-6 flex items-center gap-4">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <span className="text-xs text-gray-400 font-bold">OR PAY DIRECTLY ON THIS PHONE</span>
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {upiApps.map(app => (
+                    <a
+                      key={app.name}
+                      href={upiLink}
+                      onClick={() => {
+                        leadRecords.forEach(l => {
+                          if (l.firebaseKey) updateTransactionFields(l.firebaseKey, { checkoutStage: 'PAYMENT_LINK_OPENED' });
+                        });
+                      }}
+                      className={`${app.color} text-white text-sm font-bold rounded-lg h-11 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity`}
+                    >
+                      <Smartphone size={16} /> {app.name}
+                    </a>
+                  ))}
+                </div>
+                {!isMobileDevice() && (
+                  <p className="text-[11px] text-gray-400 mt-3">These buttons open a UPI app - on a computer, scan the QR code above with your phone instead.</p>
+                )}
+
+                <div className="my-6 flex items-center gap-4">
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                  <span className="text-xs text-gray-400 font-bold">AFTER PAYMENT</span>
+                  <div className="h-px bg-gray-200 flex-1"></div>
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  Already completed the payment? Let us know so we can verify and confirm your order.
+                </p>
+                <Button onClick={handlePaymentDoneClick} className="w-full bg-green-600 hover:bg-green-700">
+                  I Have Paid
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 'payment') {
     return (
        <div className="min-h-screen bg-gray-100 pt-8 md:pt-16 px-4 pb-20">
@@ -364,10 +454,10 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
 
                                <Button
                                   onClick={handlePayNowClick}
-                                  disabled={!matchedPaymentLink || isOpeningLink}
-                                  className={`w-full h-12 sm:h-14 text-base sm:text-lg shadow-lg flex items-center justify-center gap-2 ${matchedPaymentLink && !isOpeningLink ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'}`}
+                                  disabled={!matchedPaymentLink}
+                                  className={`w-full h-12 sm:h-14 text-base sm:text-lg shadow-lg flex items-center justify-center gap-2 ${matchedPaymentLink ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200' : 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'}`}
                                >
-                                  {isOpeningLink ? 'Opening...' : <>Pay Now <ExternalLink size={18}/></>}
+                                  Pay Now <ExternalLink size={18}/>
                                </Button>
                                {matchedPaymentLink ? (
                                  <p className="text-[11px] text-gray-400 mt-3">
@@ -472,7 +562,7 @@ export const Checkout: React.FC<CheckoutProps> = ({ items, onComplete, onCancel 
                                      </div>
                                      <h3 className="font-bold text-gray-900">EMI Not Available</h3>
                                      <p className="text-sm text-gray-500 mt-2">
-                                        Minimum order value for EMI is <span className="font-bold">鈧�5,000</span>.
+                                        Minimum order value for EMI is <span className="font-bold">₹5,000</span>.
                                      </p>
                                      <p className="text-xs text-gray-400 mt-1">Current Total: {formatCurrency(finalTotal)}</p>
                                   </div>
