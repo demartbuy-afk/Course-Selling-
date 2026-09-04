@@ -1,4 +1,3 @@
-
 export const getYouTubeEmbedUrl = (url: string) => {
   if (!url || url.trim() === '') return null;
   
@@ -29,4 +28,36 @@ export const formatCurrency = (amount: number) => {
     currency: 'INR',
     maximumFractionDigits: 0, // Remove decimal points for cleaner look in INR unless needed
   }).format(amount);
+};
+
+// Builds a standard UPI deep link ("UPI Intent") for a specific amount.
+// This is the same open, no-API-key-needed link format that every UPI app
+// (PhonePe, Google Pay, Paytm, BHIM, etc.) understands - both for scanning
+// as a QR code and for opening directly on a phone that has a UPI app
+// installed. There is no app-specific "official" web link that reliably
+// forces one particular app to open, so every app button below points to
+// this same universal link - the phone's own UPI-app picker takes it from
+// there.
+export const buildUpiLink = (params: {
+  upiId: string;
+  payeeName: string;
+  amount: number;
+  note: string;
+  txnRef: string;
+}) => {
+  const { upiId, payeeName, amount, note, txnRef } = params;
+  const search = new URLSearchParams({
+    pa: upiId,
+    pn: payeeName || 'Merchant',
+    am: amount.toFixed(2),
+    cu: 'INR',
+    tn: note.slice(0, 50),
+    tr: txnRef,
+  });
+  return `upi://pay?${search.toString()}`;
+};
+
+export const isMobileDevice = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 };
