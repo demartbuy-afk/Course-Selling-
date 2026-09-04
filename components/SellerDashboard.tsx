@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Course, Transaction, MerchantSettings, PaymentLink } from '../types';
 import { formatCurrency } from '../utils';
-import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus, fetchPaymentLinks, savePaymentLinks, resetPaymentLinkUsage } from '../services/firebase';
+import { fetchMerchantSettings, saveMerchantSettings, updateTransactionStatus, fetchPaymentLinks, savePaymentLinks } from '../services/firebase';
 import { PlusCircle, Trash2, Users, BookOpen, DollarSign, Edit, Eye, X, AlertCircle, CheckCircle, Clock, Settings, LogOut, Smartphone, Share2, Globe, Mail, Phone } from 'lucide-react';
 import { Button } from './ui/Button';
 
@@ -25,7 +25,8 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
     name: '',
     upiId: '',
     merchantId: '',
-    number: ''
+    number: '',
+    qrPaymentEnabled: false
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
@@ -78,29 +79,15 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
       return;
     }
     setIsSavingPaymentLinks(true);
-    // Merge against the latest server state first - a customer may have
-    // claimed a link (marked it used) after this screen was loaded, and we
-    // must not silently undo that just because the admin edited a label.
-    const fresh = await fetchPaymentLinks();
-    const freshById = new Map(fresh.map(l => [l.id, l]));
-    const merged = paymentLinks.map(l => {
-      const current = freshById.get(l.id);
-      return current ? { ...l, used: current.used, usedAt: current.usedAt } : l;
-    });
-    await savePaymentLinks(merged);
-    setPaymentLinks(merged);
-    alert("Payment links updated successfully.");
-    setIsSavingPaymentLinks(false);
-  };
-
-  const handleResetPaymentLink = async (id: string) => {
-    if (!window.confirm("Mark this link as available again? Only do this if the customer did NOT actually pay.")) return;
-    await resetPaymentLinkUsage(id);
-    setPaymentLinks(prev => prev.map(l => l.id === id ? { ...l, used: false, usedAt: undefined } : l));
-  };
-
-  const refreshPaymentLinkStatus = async () => {
-    setPaymentLinks(await fetchPaymentLinks());
+    try {
+      await savePaymentLinks(paymentLinks);
+      alert("Payment links updated successfully.");
+    } catch (err: any) {
+      console.error("Save payment links failed:", err);
+      alert("Payment links save nahi ho paaye. Error: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsSavingPaymentLinks(false);
+    }
   };
 
   const handleApproval = async (txn: Transaction, action: 'approved' | 'rejected') => {
@@ -512,37 +499,53 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
            {/* Tab Content: SETTINGS */}
            {activeTab === 'settings' && (
               <div className="p-8 max-w-2xl">
+                 {/* Payment Mode Toggle */}
+                 <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <Settings className="text-indigo-600"/> Payment System
+                 </h3>
+                 <p className="text-sm text-gray-500 mb-4">
+                    Switch between a dynamic UPI QR code (built from the UPI ID below) and the fixed Payment Links list further down.
+                 </p>
+                 <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl p-4 mb-10">
+                    <div>
+                       <p className="font-bold text-gray-800">
+                          {merchantSettings.qrPaymentEnabled ? 'QR / UPI-App Payment is ON' : 'Fixed Payment Links is ON'}
+                       </p>
+                       <p className="text-xs text-gray-500 mt-0.5">
+                          {merchantSettings.qrPaymentEnabled
+                             ? 'Customers see a QR code (and PhonePe/GPay/Paytm buttons) generated for their exact amount, using the UPI ID below.'
+                             : 'Customers see the fixed payment link matching their amount, from the list further down this page.'}
+                       </p>
+                    </div>
+                    <button
+                       onClick={() => setMerchantSettings(prev => ({ ...prev, qrPaymentEnabled: !prev.qrPaymentEnabled }))}
+                       className={`relative shrink-0 w-14 h-8 rounded-full transition-colors ${merchantSettings.qrPaymentEnabled ? 'bg-indigo-600' : 'bg-gray-300'}`}
+                       aria-label="Toggle QR payment mode"
+                    >
+                       <span className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-transform ${merchantSettings.qrPaymentEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </button>
+                 </div>
+                 <div className="flex justify-end -mt-6 mb-10">
+                    <Button onClick={handleSaveSettings} disabled={isSavingSettings}>
+                       {isSavingSettings ? 'Saving...' : 'Save Payment System Setting'}
+                    </Button>
+                 </div>
+
                  {/* Payment Links by Amount */}
                  <h3 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
                     <DollarSign className="text-indigo-600"/> Payment Links (by Amount)
                  </h3>
-                 <p className="text-sm text-gray-500 mb-2">
-                    Add several single-use payment links for the same amount (e.g. 10 links for 鈧�499). Checkout always hands out the next unused link in that pool, so once one customer uses a link it will never be opened again for someone else.
+                 <p className="text-sm text-gray-500 mb-6">
+                    Add one payment link per exact price a customer might pay - the full course price, and one for every coupon-discounted price. Checkout will automatically open the link that matches what the customer actually owes.
                  </p>
-                 <button onClick={refreshPaymentLinkStatus} className="text-xs font-bold text-indigo-600 hover:underline mb-4">
-                    Refresh availability status
-                 </button>
-                 {paymentLinks.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                       {Array.from(new Set(paymentLinks.map(l => l.amount))).sort((a, b) => a - b).map(amount => {
-                          const group = paymentLinks.filter(l => l.amount === amount);
-                          const available = group.filter(l => !l.used).length;
-                          return (
-                             <span key={amount} className={`text-xs font-bold px-3 py-1.5 rounded-full ${available === 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                鈧箋amount}: {available} available / {group.length} total
-                             </span>
-                          );
-                       })}
-                    </div>
-                 )}
                  <div className="space-y-3 mb-4">
                     {paymentLinks.length === 0 && (
                        <p className="text-sm text-gray-400 italic">No payment links added yet.</p>
                     )}
                     {paymentLinks.map((link) => (
                        <div key={link.id} className="flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <div className="w-full sm:w-28">
-                             <label className="block text-xs font-bold text-gray-500 mb-1">Amount (鈧�)</label>
+                          <div className="w-full sm:w-32">
+                             <label className="block text-xs font-bold text-gray-500 mb-1">Amount (₹)</label>
                              <input
                                type="number"
                                min={1}
@@ -562,7 +565,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                                onChange={(e) => updatePaymentLinkRow(link.id, 'url', e.target.value)}
                              />
                           </div>
-                          <div className="w-full sm:w-32">
+                          <div className="w-full sm:w-36">
                              <label className="block text-xs font-bold text-gray-500 mb-1">Note (optional)</label>
                              <input
                                type="text"
@@ -572,29 +575,13 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                                onChange={(e) => updatePaymentLinkRow(link.id, 'label', e.target.value)}
                              />
                           </div>
-                          <div className="w-full sm:w-auto flex items-center gap-1 self-end sm:self-center">
-                             {link.used ? (
-                                <>
-                                   <span className="text-xs font-bold px-2 py-1.5 rounded-lg bg-red-100 text-red-700 whitespace-nowrap">Used</span>
-                                   <button
-                                     onClick={() => handleResetPaymentLink(link.id)}
-                                     className="text-xs font-bold px-2 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-600 hover:bg-gray-100 whitespace-nowrap"
-                                     title="Mark available again (only if customer didn't actually pay)"
-                                   >
-                                      Reset
-                                   </button>
-                                </>
-                             ) : (
-                                <span className="text-xs font-bold px-2 py-1.5 rounded-lg bg-green-100 text-green-700 whitespace-nowrap">Available</span>
-                             )}
-                             <button
-                               onClick={() => removePaymentLinkRow(link.id)}
-                               className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                               title="Remove"
-                             >
-                                <Trash2 size={18}/>
-                             </button>
-                          </div>
+                          <button
+                            onClick={() => removePaymentLinkRow(link.id)}
+                            className="self-end sm:self-center text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                            title="Remove"
+                          >
+                             <Trash2 size={18}/>
+                          </button>
                        </div>
                     ))}
                  </div>
@@ -622,7 +609,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ courses, trans
                        />
                     </div>
                     <div>
-                       <label className="block text-sm font-bold text-gray-700 mb-1">UPI ID (VPA)</label>
+                       <label className="block text-sm font-bold text-gray-700 mb-1">UPI ID (VPA) - used for the QR code above when it's ON</label>
                        <input 
                          type="text" 
                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono"
