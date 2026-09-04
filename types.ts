@@ -72,6 +72,9 @@ export interface MerchantSettings {
   upiId: string;
   merchantId: string;
   number: string;
+  // Payment mode toggle: true = dynamic UPI QR / app-pay buttons (uses
+  // upiId below). false/undefined = the older fixed Payment Links list.
+  qrPaymentEnabled?: boolean;
 }
 
 // A payment link tied to an exact amount. Checkout looks up the link whose
@@ -82,11 +85,6 @@ export interface PaymentLink {
   amount: number;
   url: string;
   label?: string;
-  // Single-use payment links: once a customer is sent to this link it's
-  // marked used so the NEXT customer at the same amount automatically
-  // gets a different, still-unused link from the pool.
-  used?: boolean;
-  usedAt?: string;
 }
 
 export interface Transaction {
